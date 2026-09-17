@@ -1,6 +1,7 @@
 <!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>Seller Fin Tech</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
@@ -173,6 +174,22 @@ button,input,select,textarea{font:inherit; color:inherit}
 }
 .gcek{display:flex; align-items:center; gap:9px; font-size:12.5px; color:var(--ink2); cursor:pointer}
 .gcek input{width:auto}
+/* kolom kata sandi dengan tombol mata */
+.sandi{position:relative; display:block}
+.sandi input{padding-right:46px}
+.mata{
+  all:unset; cursor:pointer; position:absolute; right:5px; top:50%; transform:translateY(-50%);
+  width:34px; height:30px; display:grid; place-items:center; border-radius:7px; color:var(--ink3);
+}
+.mata:hover{color:var(--accent); background:var(--surface2)}
+.mata:focus-visible{outline:2px solid var(--accent); outline-offset:-2px}
+.mata svg{width:19px; height:19px; display:block; fill:none; stroke:currentColor; stroke-width:1.6;
+  stroke-linecap:round; stroke-linejoin:round}
+.gatau{border-top:1px solid var(--line); margin-top:2px; padding-top:14px}
+.gatau > p{margin:0 0 10px; font-size:12.5px; color:var(--ink3); line-height:1.6}
+.otp{display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap}
+.otp .field{flex:1; min-width:150px}
+.otp input{font-family:"IBM Plex Mono",monospace; letter-spacing:.24em; font-size:16px; text-align:center}
 .gfoot{margin-top:auto; padding-top:16px; border-top:1px solid var(--line); font-size:11.5px; color:var(--ink3); line-height:1.6}
 .gspin{display:inline-block; width:14px; height:14px; border-radius:50%; vertical-align:-2px;
   border:2px solid var(--line2); border-top-color:var(--accent); animation:gsp .8s linear infinite; margin-right:8px}
@@ -1335,83 +1352,21 @@ async function use(name){
   if (!DI_CLAUDE) return name === "downloads" ? UNDUH_PERAMBAN : null;
   try { return await claude.use(name); } catch(e){ return null; }
 }
-/* ============================ akun & gerbang masuk ============================
-   Akun email + kata sandi, seperti halaman masuk platform pada umumnya, tetapi
-   perlu Anda tahu batasnya: halaman ini tidak punya server sendiri, jadi tidak ada
-   surel yang bisa dikirim. Karena itu pemulihannya memakai KODE PEMULIHAN yang
-   diberikan sekali saat mendaftar — itulah pengganti tautan "reset lewat email".
-   Kata sandi tidak pernah disimpan apa adanya: yang tersimpan hasil pengacakannya
-   (PBKDF2-SHA256, 150.000 putaran, dengan garam acak per akun), begitu pula kode
-   pemulihannya. Ini kunci pintu supaya orang lain tidak asal membuka pembukuan
-   Anda — bukan brankas: siapa pun yang memegang perangkat dan bisa membaca
-   penyimpanan peramban tetap bisa melihat datanya. */
-const IDX = "akun/_index";
-let AKUN = null;                  // akun yang sedang dipakai
-let REG = { utama:"", akun:{} };  // seluruh akun yang terdaftar
+/* ============================ akun Supabase ============================
+   Masuk, daftar, dan lupa kata sandi dikerjakan Supabase Auth — kata sandinya
+   tidak pernah menyentuh halaman ini selain untuk dikirim, pemulihannya lewat
+   surel sungguhan, dan pembukuan setiap akun disimpan sebagai satu baris di
+   tabel "buku". Row Level Security di sanalah yang menjaga data, bukan kunci
+   di bawah ini: kunci publishable memang dirancang untuk dipasang terbuka di
+   halaman web. Jangan pernah menaruh kunci "secret"/"service_role" di sini. */
+const SB_URL = "https://rgguwpuhhbykuojtggba.supabase.co";
+const SB_KEY = "sb_publishable_9U4DUwTydE5uG1-Mldov7Q_mxPJiwIX";
 
-/* Akun pertama mewarisi pembukuan yang sudah ada — datanya tidak dipindah
-   ke mana pun, jadi tidak ada yang bisa hilang saat lapisan akun dipasang. */
-const bookLokal = a => (a && a.id && !a.utama) ? "bbl:book:" + a.id : "bbl:book";
-const bookDoc   = a => (a && a.id && !a.utama) ? "book/" + a.id   : "book/main";
+let SB = null;          // klien Supabase
+let AKUN = null;        // { id, email, usaha }
+let PEMULIHAN = false;  // halaman dibuka lewat tautan "atur ulang kata sandi"
 
-const emailBersih = t => String(t ?? "").trim().toLowerCase();
-const emailSah = t => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(emailBersih(t));
-const akunByEmail = e => Object.values(REG.akun || {})
-  .find(a => emailBersih(a.email) === emailBersih(e)) || null;
-
-function acakHex(n){
-  const a = new Uint8Array(n);
-  (crypto.getRandomValues ? crypto : { getRandomValues: x => x.forEach((_,i) => x[i] = Math.floor(Math.random()*256)) })
-    .getRandomValues(a);
-  return [...a].map(b => b.toString(16).padStart(2,"0")).join("");
-}
-/* Kode pemulihan: empat kelompok empat huruf, tanpa huruf yang mudah tertukar. */
-const HURUF = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-function kodePulih(){
-  const a = new Uint8Array(16);
-  try { crypto.getRandomValues(a); } catch(e){ for (let i=0;i<16;i++) a[i] = Math.floor(Math.random()*256); }
-  const s = [...a].map(b => HURUF[b % HURUF.length]).join("");
-  return s.match(/.{4}/g).join("-");
-}
-/* PBKDF2 bila tersedia (halaman terbit selalu di konteks aman); kalau tidak,
-   pengacakan sederhana — cukup untuk mencegah kata sandi tersimpan apa adanya. */
-async function kunci(teks, garam){
-  const t = String(teks ?? ""), g = String(garam ?? "");
-  const sub = (window.crypto || {}).subtle;
-  if (sub && sub.importKey){
-    try {
-      const enc = new TextEncoder();
-      const k = await sub.importKey("raw", enc.encode(t), "PBKDF2", false, ["deriveBits"]);
-      const bits = await sub.deriveBits(
-        { name:"PBKDF2", salt: enc.encode(g), iterations: 150000, hash:"SHA-256" }, k, 256);
-      return [...new Uint8Array(bits)].map(b => b.toString(16).padStart(2,"0")).join("");
-    } catch(e){}
-  }
-  let h1 = 0x811c9dc5, h2 = 0x1000193;
-  const s = g + "" + t;
-  for (let i = 0; i < s.length; i++){
-    h1 = (h1 ^ s.charCodeAt(i)) >>> 0; h1 = Math.imul(h1, 16777619) >>> 0;
-    h2 = (h2 + s.charCodeAt(i) * (i + 7)) >>> 0; h2 = Math.imul(h2, 2246822519) >>> 0;
-  }
-  return "x" + h1.toString(16).padStart(8,"0") + h2.toString(16).padStart(8,"0");
-}
-
-async function bacaReg(){
-  if (db){ try { const s = await db.doc(IDX).get(); if (s && s.data && s.data.akun) return s.data; } catch(e){} }
-  try { const r = localStorage.getItem("bbl:akun"); if (r){ const o = JSON.parse(r); if (o && o.akun) return o; } } catch(e){}
-  return { utama:"", akun:{} };
-}
-async function tulisReg(){
-  try { localStorage.setItem("bbl:akun", JSON.stringify(REG)); } catch(e){}
-  if (db){ try { await db.doc(IDX).set(REG); } catch(e){} }
-}
-/* Pembukuan yang sudah tersimpan di perangkat ini, kalau ada — dipakai untuk
-   menawarkan nama usahanya saat akun pertama dibuat. */
-function bukuLama(){
-  try { const r = localStorage.getItem("bbl:book"); if (!r) return null;
-    const o = JSON.parse(r); return (o && o.setup) ? o.setup : null; } catch(e){ return null; }
-}
-const emailTerakhir = () => { try { return localStorage.getItem("bbl:akun:terakhir") || ""; } catch(e){ return ""; } };
+const alamatKembali = () => location.origin + location.pathname;
 
 /* ---------- kartu-kartu di gerbang ---------- */
 const gcard = () => document.getElementById("gcard");
@@ -1420,107 +1375,152 @@ function gerbang(nama, isi){
   const c = gcard(); if (!c) return;
   if (nama) GERBANG = nama;
   c.innerHTML = isi !== undefined ? isi : ({
-    masuk: kartuMasuk, daftar: kartuDaftar, pulih: kartuPulih, memuat: kartuMemuat,
+    masuk: kartuMasuk, daftar: kartuDaftar, lupa: kartuLupa,
+    sandiBaru: kartuSandiBaru, memuat: kartuMemuat,
   }[GERBANG] || kartuMasuk)();
   pasangGerbang(c);
   const f = c.querySelector("input:not([disabled])");
   if (f) try { f.focus(); } catch(e){}
 }
-const gsalah = teks => { const e = document.getElementById("g-err"); if (!e) return;
-  e.textContent = teks || ""; e.hidden = !teks; };
+const gpesan = (teks, baik) => {
+  const e = document.getElementById("g-err"); if (!e) return;
+  e.textContent = teks || ""; e.hidden = !teks;
+  e.className = "gerr" + (baik ? " ok" : "");
+};
+const emailTerakhir = () => { try { return localStorage.getItem("bbl:akun:terakhir") || ""; } catch(e){ return ""; } };
+const ingatEmail = e => { try { localStorage.setItem("bbl:akun:terakhir", e); } catch(err){} };
 
-const kakiGerbang = `<div class="gfoot">Kata sandi disimpan dalam bentuk teracak, tidak pernah apa adanya.
-  Karena halaman ini tidak mengirim surel, pemulihannya memakai kode yang diberikan saat mendaftar —
-  simpan kode itu seperti Anda menyimpan kunci toko.</div>`;
-const barisSalah = `<p class="gerr" id="g-err" hidden></p>`;
+const kakiGerbang = `<div class="gfoot">Akun dan kata sandi dikelola Supabase. Tautan atur ulang
+  dikirim ke email Anda, dan pembukuan tiap akun berdiri sendiri — akun lain tidak bisa membukanya.</div>`;
+const barisPesan = `<p class="gerr" id="g-err" hidden></p>`;
 
-function kartuMemuat(){
-  return `<h2>Masuk</h2><p class="gsub"><span class="gspin"></span>Membuka daftar akun…</p>${kakiGerbang}`;
+function kartuMemuat(teks){
+  return `<h2>Sebentar</h2>
+    <p class="gsub"><span class="gspin"></span>${esc(teks || "Menghubungi server…")}</p>${kakiGerbang}`;
 }
+function kartuGagal(sebab){
+  return `<h2>Belum bisa terhubung</h2>
+    <p class="gsub">${esc(sebab)}</p>
+    <button class="btn primary" id="g-ulang">Coba lagi</button>
+    ${kakiGerbang}`;
+}
+/* Kolom kata sandi selalu dibuat lewat sini supaya tombol matanya konsisten
+   di setiap kartu — dan supaya orang bisa memeriksa ketikannya sendiri,
+   yang justru membuat kata sandi salah ketik jauh berkurang. */
+const IKON_MATA = `<svg viewBox="0 0 24 24" aria-hidden="true" class="buka"><path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12Z"/><circle cx="12" cy="12" r="2.8"/></svg>
+  <svg viewBox="0 0 24 24" aria-hidden="true" class="tutup" hidden><path d="M3 3l18 18"/><path d="M10.6 6.2A9.8 9.8 0 0 1 12 5.5c6.4 0 10 6.5 10 6.5a17 17 0 0 1-3.6 4.3"/><path d="M6.4 7.7A17 17 0 0 0 2 12s3.6 6.5 10 6.5c1.4 0 2.6-.3 3.7-.8"/><path d="M9.6 9.8a2.8 2.8 0 0 0 3.9 3.9"/></svg>`;
+const kotakSandi = (id, label, autoc, ph) => `<div class="field"><label for="${id}">${esc(label)}</label>
+  <span class="sandi"><input type="password" id="${id}" autocomplete="${autoc}" placeholder="${esc(ph)}">
+    <button type="button" class="mata" data-mata="${id}" aria-pressed="false"
+      aria-label="Tampilkan kata sandi" title="Tampilkan kata sandi">${IKON_MATA}</button></span></div>`;
+
 function kartuMasuk(){
   return `<h2>Masuk</h2>
     <p class="gsub">Masuk ke pembukuan Anda dengan email dan kata sandi yang Anda daftarkan.</p>
-    ${barisSalah}
+    ${barisPesan}
     <div class="field"><label for="g-email">Email</label>
       <input type="email" id="g-email" autocomplete="username" value="${esc(emailTerakhir())}" placeholder="nama@email.com"></div>
-    <div class="field"><label for="g-sandi">Kata sandi</label>
-      <input type="password" id="g-sandi" autocomplete="current-password" placeholder="••••••••"></div>
+    ${kotakSandi("g-sandi", "Kata sandi", "current-password", "••••••••")}
     <button class="btn primary" id="g-masuk">Masuk</button>
-    <div class="glink"><button type="button" class="tautan" id="g-ke-pulih">Lupa kata sandi?</button>
+    <div class="glink"><button type="button" class="tautan" id="g-ke-lupa">Lupa kata sandi?</button>
       <span>Belum punya akun? <button type="button" class="tautan" id="g-ke-daftar">Daftar</button></span></div>
     ${kakiGerbang}`;
 }
 function kartuDaftar(){
-  const lama = bukuLama();
-  const kosong = !REG.utama;
   return `<h2>Daftar akun</h2>
-    <p class="gsub">Satu akun memegang satu pembukuan. Periode buku dan pengaturan lainnya bisa Anda atur
-      setelah masuk.</p>
-    ${barisSalah}
+    <p class="gsub">Satu akun memegang satu pembukuan, dan bisa dibuka dari perangkat mana pun.
+      Periode buku diatur setelah masuk.</p>
+    ${barisPesan}
     <div class="field"><label for="g-usaha">Nama usaha</label>
-      <input type="text" id="g-usaha" value="${esc((lama && lama.nama) || "")}" placeholder="mis. Toko Sinar Jaya"></div>
+      <input type="text" id="g-usaha" placeholder="mis. Toko Sinar Jaya"></div>
     <div class="field"><label for="g-email">Email</label>
       <input type="email" id="g-email" autocomplete="username" placeholder="nama@email.com"></div>
-    <div class="field"><label for="g-sandi">Kata sandi</label>
-      <input type="password" id="g-sandi" autocomplete="new-password" placeholder="minimal 8 karakter"></div>
-    <div class="field"><label for="g-sandi2">Ulangi kata sandi</label>
-      <input type="password" id="g-sandi2" autocomplete="new-password" placeholder="ketik ulang"></div>
-    <button class="btn primary" id="g-daftar">Daftar &amp; mulai</button>
+    ${kotakSandi("g-sandi", "Kata sandi", "new-password", "minimal 8 karakter")}
+    ${kotakSandi("g-sandi2", "Ulangi kata sandi", "new-password", "ketik ulang")}
+    <button class="btn primary" id="g-daftar">Daftar</button>
     <div class="glink"><span>Sudah punya akun? <button type="button" class="tautan" id="g-ke-masuk">Masuk</button></span></div>
-    ${lama && kosong ? `<p class="gnote">Pembukuan yang sudah ada di perangkat ini akan menjadi milik akun ini —
-      datanya tidak dipindah ke mana pun dan tidak ada yang terhapus.</p>` : ""}
     ${kakiGerbang}`;
 }
-function kartuPulih(){
+function kartuLupa(){
   return `<h2>Lupa kata sandi</h2>
-    <p class="gsub">Masukkan email Anda beserta kode pemulihan yang diberikan saat mendaftar,
-      lalu tentukan kata sandi baru.</p>
-    ${barisSalah}
+    <p class="gsub">Masukkan email akun Anda. Kami kirimkan tautan untuk menentukan kata sandi baru —
+      buka tautan itu dari perangkat ini juga.</p>
+    ${barisPesan}
     <div class="field"><label for="g-email">Email</label>
       <input type="email" id="g-email" autocomplete="username" value="${esc(emailTerakhir())}" placeholder="nama@email.com"></div>
-    <div class="field"><label for="g-kode">Kode pemulihan</label>
-      <input type="text" id="g-kode" class="n" placeholder="XXXX-XXXX-XXXX-XXXX" autocomplete="one-time-code"></div>
-    <div class="field"><label for="g-sandi">Kata sandi baru</label>
-      <input type="password" id="g-sandi" autocomplete="new-password" placeholder="minimal 8 karakter"></div>
-    <button class="btn primary" id="g-pulih">Simpan kata sandi baru</button>
+    <button class="btn primary" id="g-kirim">Kirim tautan atur ulang</button>
     <div class="glink"><button type="button" class="tautan" id="g-ke-masuk">Kembali ke halaman masuk</button></div>
-    <p class="gnote">Kode pemulihan hilang? Pembukuannya tidak bisa dibuka lagi lewat halaman ini —
-      tidak ada pintu belakang. Yang tersisa hanya berkas cadangan JSON yang pernah Anda unduh.</p>
+    <p class="gnote">Tautannya berlaku satu jam. Kalau tidak muncul dalam beberapa menit,
+      periksa folder spam atau promosi.</p>
     ${kakiGerbang}`;
 }
-function kartuKode(kode, akun){
-  return `<h2>Simpan kode pemulihan</h2>
-    <p class="gsub">Ini satu-satunya cara memulihkan akun <strong>${esc(akun.email)}</strong> kalau kata sandinya lupa.
-      Kodenya hanya ditampilkan sekarang.</p>
-    <div class="gkode" id="g-kode-teks">${esc(kode)}</div>
-    <button class="btn" id="g-salin">Salin kode</button>
-    <label class="gcek"><input type="checkbox" id="g-catat"> Saya sudah mencatat kode ini</label>
-    <button class="btn primary" id="g-lanjut" disabled>Lanjut ke pembukuan</button>
+/* Dua jalan keluar dari satu email: klik tautannya, atau ketik kode yang ada di
+   dalamnya. Kode berguna justru ketika tautannya tidak bisa dipakai — email dibuka
+   di HP sedangkan aplikasinya di laptop, atau tautannya sudah kedaluwarsa. */
+function kartuCekEmail(email, daftar){
+  return `<h2>Periksa email Anda</h2>
+    <p class="gsub">${daftar
+      ? `Email konfirmasi dikirim ke <strong>${esc(email)}</strong>. Klik tautan di dalamnya untuk
+         mengaktifkan akun, lalu kembali ke sini dan masuk.`
+      : `Email atur ulang kata sandi dikirim ke <strong>${esc(email)}</strong>. Klik tautan di dalamnya,
+         dan halaman ini langsung meminta kata sandi baru Anda.`}</p>
+    ${barisPesan}
+    <div class="gatau">
+      <p>Tautannya tidak bisa diklik — misalnya emailnya terbuka di HP sedangkan Anda memakai laptop?
+         Kalau email Anda memuat kode enam angka, ketikkan di sini.</p>
+      <div class="otp">
+        <div class="field"><label for="g-otp">Kode dari email</label>
+          <input type="text" id="g-otp" inputmode="numeric" maxlength="8" placeholder="000000"
+            autocomplete="one-time-code"></div>
+        <button class="btn primary" id="g-otp-kirim" data-tipe="${daftar ? "signup" : "recovery"}"
+          data-email="${esc(email)}">Lanjutkan</button>
+      </div>
+    </div>
+    <div class="glink"><button type="button" class="tautan" id="g-ke-masuk2">Kembali ke halaman masuk</button></div>
+    <p class="gnote">Belum masuk juga? Periksa folder spam dan promosi. Demi keamanan, halaman ini
+      tidak memberi tahu apakah sebuah alamat email terdaftar atau tidak.</p>
+    ${kakiGerbang}`;
+}
+function kartuSandiBaru(){
+  return `<h2>Kata sandi baru</h2>
+    <p class="gsub">Tautan Anda sah. Tentukan kata sandi baru untuk akun ini.</p>
+    ${barisPesan}
+    ${kotakSandi("g-sandi", "Kata sandi baru", "new-password", "minimal 8 karakter")}
+    ${kotakSandi("g-sandi2", "Ulangi kata sandi baru", "new-password", "ketik ulang")}
+    <button class="btn primary" id="g-simpan-sandi">Simpan &amp; masuk</button>
     ${kakiGerbang}`;
 }
 
 function pasangGerbang(c){
-  const ke = (id, nama) => { const b = c.querySelector(id); if (b) b.onclick = () => gerbang(nama); };
-  ke("#g-ke-daftar", "daftar"); ke("#g-ke-masuk", "masuk"); ke("#g-ke-pulih", "pulih");
-  const utama = c.querySelector("#g-masuk, #g-daftar, #g-pulih");
+  const ke = (id, nama) => { const b = c.querySelector(id); if (b) b.onclick = () => { gerbang(nama); }; };
+  ke("#g-ke-daftar", "daftar"); ke("#g-ke-masuk", "masuk");
+  ke("#g-ke-masuk2", "masuk");  ke("#g-ke-lupa", "lupa");
+  const ulang = c.querySelector("#g-ulang");
+  if (ulang) ulang.onclick = () => boot();
+  /* tombol mata: menampilkan atau menyembunyikan ketikan kata sandi */
+  c.querySelectorAll("[data-mata]").forEach(b => b.onclick = () => {
+    const inp = document.getElementById(b.dataset.mata); if (!inp) return;
+    const tampil = inp.type === "password";
+    inp.type = tampil ? "text" : "password";
+    b.setAttribute("aria-pressed", tampil ? "true" : "false");
+    const teks = tampil ? "Sembunyikan kata sandi" : "Tampilkan kata sandi";
+    b.setAttribute("aria-label", teks); b.title = teks;
+    const buka = b.querySelector(".buka"), tutup = b.querySelector(".tutup");
+    if (buka && tutup){ buka.hidden = tampil; tutup.hidden = !tampil; }
+    try { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); } catch(e){}
+  });
+  const otp = c.querySelector("#g-otp-kirim");
+  if (otp) otp.onclick = () => cobaKodeOtp(otp.dataset.email, otp.dataset.tipe);
+  const utama = c.querySelector("#g-masuk, #g-daftar, #g-kirim, #g-simpan-sandi, #g-otp-kirim");
   if (utama){
-    utama.onclick = () => {
-      if (utama.id === "g-masuk") cobaMasuk();
-      else if (utama.id === "g-daftar") cobaDaftar();
-      else cobaPulih();
-    };
+    if (utama.id !== "g-otp-kirim") utama.onclick = () => ({
+      "g-masuk": cobaMasuk, "g-daftar": cobaDaftar,
+      "g-kirim": cobaKirimTautan, "g-simpan-sandi": cobaSandiBaru,
+    })[utama.id]();
     c.querySelectorAll("input").forEach(inp => inp.onkeydown = e => {
       if (e.key === "Enter"){ e.preventDefault(); utama.click(); }
     });
   }
-  const salin = c.querySelector("#g-salin");
-  if (salin) salin.onclick = async () => {
-    const teks = (c.querySelector("#g-kode-teks") || {}).textContent || "";
-    try { await navigator.clipboard.writeText(teks); salin.textContent = "Kode tersalin"; }
-    catch(e){ salin.textContent = "Salin sendiri kodenya di atas"; }
-  };
-  const cek = c.querySelector("#g-catat"), lanjut = c.querySelector("#g-lanjut");
-  if (cek && lanjut) cek.onchange = () => { lanjut.disabled = !cek.checked; };
 }
 
 /* ---------- tindakan ---------- */
@@ -1530,95 +1530,163 @@ function sibuk(id, teks){
   const lama = b.textContent; b.disabled = true; b.textContent = teks;
   return () => { b.disabled = false; b.textContent = lama; };
 }
+/* Pesan galat Supabase berbahasa Inggris; yang sering muncul diterjemahkan,
+   sisanya ditampilkan apa adanya supaya tidak ada kegagalan yang disembunyikan. */
+function pesanGalat(e){
+  const t = String((e && e.message) || e || "").toLowerCase();
+  if (t.includes("invalid login")) return "Email atau kata sandi tidak cocok.";
+  if (t.includes("email not confirmed")) return "Akun ini belum dikonfirmasi. Buka tautan di email Anda dulu.";
+  if (t.includes("already registered") || t.includes("already exists"))
+    return "Email ini sudah terdaftar. Masuk saja, atau pakai Lupa kata sandi.";
+  if (t.includes("password should be")) return "Kata sandi terlalu pendek — minimal 8 karakter.";
+  if (t.includes("rate limit") || t.includes("too many"))
+    return "Terlalu banyak percobaan. Tunggu sebentar lalu coba lagi.";
+  if (t.includes("failed to fetch") || t.includes("networkerror"))
+    return "Tidak bisa menghubungi server. Periksa koneksi internet Anda.";
+  return (e && e.message) ? e.message : "Terjadi kesalahan. Coba lagi.";
+}
 
 async function cobaMasuk(){
-  gsalah("");
-  const email = emailBersih(nilai("g-email")), sandi = nilai("g-sandi");
-  if (!email || !sandi){ gsalah("Isi email dan kata sandi Anda."); return; }
-  const a = akunByEmail(email);
+  gpesan("");
+  const email = nilai("g-email").toLowerCase(), sandi = nilai("g-sandi");
+  if (!email || !sandi){ gpesan("Isi email dan kata sandi Anda."); return; }
   const selesai = sibuk("g-masuk", "Memeriksa…");
-  /* akun tidak ada pun tetap melewati pengacakan, supaya lamanya menjawab
-     tidak membocorkan email mana yang terdaftar */
-  const uji = await kunci(sandi, (a && a.garam) || "kosong");
-  selesai();
-  if (!a || uji !== a.sandi){ gsalah("Email atau kata sandi tidak cocok."); return; }
-  try { localStorage.setItem("bbl:akun:terakhir", email); } catch(e){}
-  await masuk(a);
+  try {
+    const { data, error } = await SB.auth.signInWithPassword({ email, password: sandi });
+    if (error) throw error;
+    ingatEmail(email);
+    await masuk(data.user);
+  } catch(e){ selesai(); gpesan(pesanGalat(e)); }
 }
 async function cobaDaftar(){
-  gsalah("");
+  gpesan("");
   const usaha = nilai("g-usaha") || "Toko Saya";
-  const email = emailBersih(nilai("g-email"));
+  const email = nilai("g-email").toLowerCase();
   const sandi = nilai("g-sandi"), ulang = nilai("g-sandi2");
-  if (!emailSah(email)){ gsalah("Alamat email belum benar."); return; }
-  if (akunByEmail(email)){ gsalah("Email ini sudah terdaftar. Masuk saja, atau pulihkan kata sandinya."); return; }
-  if (sandi.length < 8){ gsalah("Kata sandi minimal 8 karakter."); return; }
-  if (sandi !== ulang){ gsalah("Ulangan kata sandi belum sama."); return; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)){ gpesan("Alamat email belum benar."); return; }
+  if (sandi.length < 8){ gpesan("Kata sandi minimal 8 karakter."); return; }
+  if (sandi !== ulang){ gpesan("Ulangan kata sandi belum sama."); return; }
   const selesai = sibuk("g-daftar", "Membuat akun…");
-  const garam = acakHex(16), garamP = acakHex(16), kode = kodePulih();
-  const a = {
-    id: "ak_" + acakHex(8), email, usaha,
-    garam, sandi: await kunci(sandi, garam),
-    garamP, pulih: await kunci(kode, garamP),
-    dibuat: new Date().toISOString().slice(0,10), utama: !REG.utama,
-  };
-  REG.akun[a.id] = a;
-  if (a.utama) REG.utama = a.id;
-  await tulisReg();
-  try { localStorage.setItem("bbl:akun:terakhir", email); } catch(e){}
-  selesai();
-  gerbang(null, kartuKode(kode, a));
-  const lanjut = document.getElementById("g-lanjut");
-  if (lanjut) lanjut.onclick = () => masuk(a, { usaha });
+  try {
+    const { data, error } = await SB.auth.signUp({
+      email, password: sandi,
+      options: { data: { usaha }, emailRedirectTo: alamatKembali() },
+    });
+    if (error) throw error;
+    ingatEmail(email);
+    if (data.session) await masuk(data.user, usaha);     // konfirmasi email dimatikan
+    else gerbang(null, kartuCekEmail(email, true));      // menunggu konfirmasi
+  } catch(e){ selesai(); gpesan(pesanGalat(e)); }
 }
-async function cobaPulih(){
-  gsalah("");
-  const email = emailBersih(nilai("g-email")), kode = nilai("g-kode").toUpperCase().replace(/\s+/g,"");
-  const baru = nilai("g-sandi");
-  if (!email || !kode){ gsalah("Isi email dan kode pemulihannya."); return; }
-  if (baru.length < 8){ gsalah("Kata sandi baru minimal 8 karakter."); return; }
-  const a = akunByEmail(email);
-  const selesai = sibuk("g-pulih", "Memeriksa…");
-  const uji = await kunci(kode, (a && a.garamP) || "kosong");
-  if (!a || uji !== a.pulih){ selesai(); gsalah("Email dan kode pemulihan tidak cocok."); return; }
-  a.garam = acakHex(16);
-  a.sandi = await kunci(baru, a.garam);
-  REG.akun[a.id] = a;
-  await tulisReg();
-  selesai();
-  gerbang("masuk");
-  gsalah("");
-  const ok = document.getElementById("g-err");
-  if (ok){ ok.textContent = "Kata sandi diperbarui. Silakan masuk."; ok.hidden = false; ok.className = "gerr ok"; }
+async function cobaKirimTautan(){
+  gpesan("");
+  const email = nilai("g-email").toLowerCase();
+  if (!email){ gpesan("Isi email akun Anda."); return; }
+  const selesai = sibuk("g-kirim", "Mengirim…");
+  try {
+    const { error } = await SB.auth.resetPasswordForEmail(email, { redirectTo: alamatKembali() });
+    if (error) throw error;
+    ingatEmail(email);
+    gerbang(null, kartuCekEmail(email, false));
+  } catch(e){ selesai(); gpesan(pesanGalat(e)); }
+}
+/* Kode enam angka dari email: sah untuk konfirmasi pendaftaran maupun
+   atur ulang kata sandi, tergantung email mana yang dikirim. */
+async function cobaKodeOtp(email, tipe){
+  gpesan("");
+  const kode = nilai("g-otp").replace(/\D/g, "");
+  if (kode.length < 6){ gpesan("Kode dari email terdiri dari enam angka."); return; }
+  const selesai = sibuk("g-otp-kirim", "Memeriksa…");
+  try {
+    const { data, error } = await SB.auth.verifyOtp({ email, token: kode, type: tipe });
+    if (error) throw error;
+    ingatEmail(email);
+    if (tipe === "recovery"){ PEMULIHAN = true; gerbang("sandiBaru"); return; }
+    await masuk(data.user);
+  } catch(e){
+    selesai();
+    const t = String((e && e.message) || "").toLowerCase();
+    gpesan(t.includes("expired") ? "Kode ini sudah kedaluwarsa. Minta email baru dari halaman masuk."
+      : t.includes("invalid") || t.includes("token") ? "Kode tidak cocok. Periksa lagi enam angkanya."
+      : pesanGalat(e));
+  }
+}
+async function cobaSandiBaru(){
+  gpesan("");
+  const sandi = nilai("g-sandi"), ulang = nilai("g-sandi2");
+  if (sandi.length < 8){ gpesan("Kata sandi minimal 8 karakter."); return; }
+  if (sandi !== ulang){ gpesan("Ulangan kata sandi belum sama."); return; }
+  const selesai = sibuk("g-simpan-sandi", "Menyimpan…");
+  try {
+    const { data, error } = await SB.auth.updateUser({ password: sandi });
+    if (error) throw error;
+    PEMULIHAN = false;
+    history.replaceState(null, "", alamatKembali());
+    await masuk(data.user);
+  } catch(e){ selesai(); gpesan(pesanGalat(e)); }
 }
 
-async function masuk(a, awal){
-  AKUN = a;
-  await muatBuku();
-  if (awal && awal.usaha) S.setup.nama = awal.usaha;
+/* ---------- masuk & data ---------- */
+async function masuk(user, usahaBaru){
+  AKUN = { id: user.id, email: user.email || "",
+           usaha: usahaBaru || ((user.user_metadata || {}).usaha) || "" };
+  gerbang(null, kartuMemuat("Mengambil pembukuan Anda…"));
+  await muatBuku(usahaBaru);
   document.getElementById("gate").hidden = true;
   document.getElementById("app").hidden = false;
   render();
-  if (awal) save();
 }
-async function muatBuku(){
+const cacheKunci = () => "bbl:book:" + (AKUN ? AKUN.id : "tamu");
+/* Salinan lokal dipakai supaya aplikasi tetap bisa dibuka saat jaringan putus,
+   dan supaya pembukuan yang terlanjur tersimpan sebelum Supabase dipasang ikut
+   terangkat ke server pada masuk pertama. */
+function bacaCache(){
+  for (const k of [cacheKunci(), "bbl:book"]){
+    try { const r = localStorage.getItem(k); if (r){ const o = JSON.parse(r); if (o && o.setup) return o; } } catch(e){}
+  }
+  return null;
+}
+const adaIsi = b => !!b && ["income","order","beli","ops","jurnal","produk","adjust","mutasi","iklan","saldo","aset","pajak","resep","varian"]
+  .some(k => (b[k] || []).length);
+
+async function muatBuku(usahaBaru){
   S = BLANK();
-  try { const raw = localStorage.getItem(bookLokal(AKUN)); if (raw) S = Object.assign(BLANK(), JSON.parse(raw)); } catch(e){}
+  const lokal = bacaCache();
+  if (lokal) S = Object.assign(BLANK(), lokal);
   migrasiJurnal(); migrasiPilih(); migrasiLabel();
-  if (!db) return;
+  if (usahaBaru) S.setup.nama = usahaBaru;
   try {
-    const snap = await db.doc(bookDoc(AKUN)).get();
-    if (snap && snap.data && snap.data.v && num(snap.data.ts) >= num(S.ts)){
-      S = Object.assign(BLANK(), snap.data); migrasiJurnal(); migrasiPilih(); migrasiLabel();
-    } else if (snap && snap.data && snap.data.v){ save(); }
-    else { await db.doc(bookDoc(AKUN)).set(S); }
-  } catch(e){}
+    const { data, error } = await SB.from("buku").select("data").eq("user_id", AKUN.id).maybeSingle();
+    if (error) throw error;
+    const jauh = data && data.data;
+    if (jauh && jauh.setup && num(jauh.ts) >= num(S.ts)){
+      S = Object.assign(BLANK(), jauh);
+      migrasiJurnal(); migrasiPilih(); migrasiLabel();
+      note("Tersinkron dengan server");
+    } else if (!jauh || !jauh.setup){
+      if (AKUN.usaha && !usahaBaru && S.setup.nama === "Toko Saya") S.setup.nama = AKUN.usaha;
+      await simpanJauh();
+      note(adaIsi(S) ? "Pembukuan di perangkat ini diangkat ke server" : "Tersimpan di server");
+    } else { await simpanJauh(); note("Tersinkron dengan server"); }
+  } catch(e){
+    note("Luring — perubahan tersimpan di perangkat ini dulu");
+  }
+}
+async function simpanJauh(){
+  if (!SB || !AKUN) return false;
+  try {
+    const { error } = await SB.from("buku")
+      .upsert({ user_id: AKUN.id, usaha: S.setup.nama, data: S }, { onConflict: "user_id" });
+    return !error;
+  } catch(e){ return false; }
 }
 async function keluar(){
-  if (!await konfirmasi("Keluar dari akun ini? Pembukuan Anda tetap tersimpan dan akan ada lagi saat Anda masuk kembali.",
+  if (!await konfirmasi("Keluar dari akun ini? Pembukuan Anda tersimpan di server dan akan ada lagi saat Anda masuk kembali.",
       "Keluar", "Keluar")) return;
   clearTimeout(saveTimer);
   save();
+  await simpanJauh();
+  try { await SB.auth.signOut(); } catch(e){}
   AKUN = null; S = BLANK();
   document.getElementById("app").hidden = true;
   document.getElementById("gate").hidden = false;
@@ -1627,34 +1695,51 @@ async function keluar(){
 
 async function boot(){
   gerbang("memuat");
-  db = await use("db");
-  REG = await bacaReg();
-  gerbang(Object.keys(REG.akun || {}).length ? "masuk" : "daftar");
+  if (!window.supabase || !window.supabase.createClient){
+    gerbang(null, kartuGagal("Pustaka Supabase gagal dimuat — biasanya karena koneksi internet terputus saat halaman dibuka."));
+    return;
+  }
+  try { SB = window.supabase.createClient(SB_URL, SB_KEY); }
+  catch(e){ gerbang(null, kartuGagal(pesanGalat(e))); return; }
+
+  /* Tautan atur ulang kata sandi membuka halaman ini dengan penanda khusus;
+     Supabase mengenalinya sendiri lalu memberi tahu lewat peristiwa ini. */
+  SB.auth.onAuthStateChange((ev) => {
+    if (ev !== "PASSWORD_RECOVERY") return;
+    PEMULIHAN = true;
+    document.getElementById("app").hidden = true;
+    document.getElementById("gate").hidden = false;
+    gerbang("sandiBaru");
+  });
+  if (/type=recovery/.test(location.hash)) PEMULIHAN = true;
+
+  let sesi = null;
+  try { const { data } = await SB.auth.getSession(); sesi = data && data.session; } catch(e){}
+  if (PEMULIHAN){ gerbang("sandiBaru"); return; }
+  if (sesi && sesi.user) await masuk(sesi.user);
+  else gerbang("masuk");
 }
+
 function save(){
   if (!AKUN) return;
   S.ts = Date.now();
   let lokalOK = true;
-  try { localStorage.setItem(bookLokal(AKUN), JSON.stringify(S)); } catch(e){ lokalOK = false; }
-  if (!lokalOK){
-    note("GAGAL menyimpan di browser — data terlalu besar");
-    pesan("Penyimpanan browser penuh, perubahan terakhir TIDAK tersimpan di perangkat ini.\n\n" +
-          "Impor ulang dengan pilihan Ringkas per hari, atau unduh cadangan JSON lalu kosongkan tabel yang paling besar.");
-  } else note("Menyimpan…");
+  try { localStorage.setItem(cacheKunci(), JSON.stringify(S)); } catch(e){ lokalOK = false; }
+  if (!lokalOK) note("Salinan lokal penuh — mengandalkan server");
+  else note("Menyimpan…");
   clearTimeout(saveTimer);
   saveTimer = setTimeout(async () => {
-    let jauhOK = true;
-    if (db){ try { await db.doc(bookDoc(AKUN)).set(S); } catch(e){ jauhOK = false; } }
-    note(!jauhOK ? "Gagal menyimpan ke penyimpanan akun"
-      : (lokalOK ? "Tersimpan " : "Tersimpan hanya di penyimpanan akun ")
-        + new Date().toLocaleTimeString("id-ID", { hour:"2-digit", minute:"2-digit" }));
+    const ok = await simpanJauh();
+    note(ok ? "Tersimpan " + new Date().toLocaleTimeString("id-ID", { hour:"2-digit", minute:"2-digit" })
+            : "Belum tersimpan ke server — akan dicoba lagi saat Anda mengubah sesuatu");
   }, 700);
 }
 addEventListener("pagehide", () => {
   if (!AKUN) return;
-  try { clearTimeout(saveTimer); localStorage.setItem(bookLokal(AKUN), JSON.stringify(S));
-        if (db) db.doc(bookDoc(AKUN)).set(S); } catch(e){}
+  try { clearTimeout(saveTimer); localStorage.setItem(cacheKunci(), JSON.stringify(S)); } catch(e){}
+  simpanJauh();
 });
+
 const note = t => { document.getElementById("tb-save").textContent = t; };
 function touch(){ save(); render(); }
 
