@@ -1647,41 +1647,53 @@ async function masuk(user, usahaBaru){
   document.getElementById("app").hidden = false;
   render();
 }
+/* Salinan lokal SELALU berkunci id akun. Jangan pernah menambahkan kunci
+   cadangan tanpa id di sini: satu perangkat bisa dipakai beberapa akun, dan
+   cadangan bersama itu membuat buku satu akun terbuka — bahkan tertulis — di
+   akun lain. Kunci lama "bbl:book" dari masa sebelum Supabase sengaja tidak
+   pernah dibaca lagi; isinya sudah terangkat ke akun yang pertama memakainya. */
 const cacheKunci = () => "bbl:book:" + (AKUN ? AKUN.id : "tamu");
-/* Salinan lokal dipakai supaya aplikasi tetap bisa dibuka saat jaringan putus,
-   dan supaya pembukuan yang terlanjur tersimpan sebelum Supabase dipasang ikut
-   terangkat ke server pada masuk pertama. */
 function bacaCache(){
-  for (const k of [cacheKunci(), "bbl:book"]){
-    try { const r = localStorage.getItem(k); if (r){ const o = JSON.parse(r); if (o && o.setup) return o; } } catch(e){}
-  }
+  if (!AKUN) return null;
+  try {
+    const r = localStorage.getItem(cacheKunci());
+    if (r){ const o = JSON.parse(r); if (o && o.setup) return o; }
+  } catch(e){}
   return null;
 }
 const adaIsi = b => !!b && ["income","order","beli","ops","jurnal","produk","adjust","mutasi","iklan","saldo","aset","pajak","resep","varian"]
   .some(k => (b[k] || []).length);
 
+/* Yang dipakai: versi server, kecuali salinan lokal akun INI memang lebih baru
+   (mis. Anda mengisi data saat jaringan mati). Server hanya ditulisi kalau
+   barisnya belum ada, atau kalau salinan lokal akun ini yang lebih baru. */
 async function muatBuku(usahaBaru){
   S = BLANK();
+  const pakai = b => {
+    S = Object.assign(BLANK(), b);
+    migrasiJurnal(); migrasiPilih(); migrasiLabel();
+  };
   const lokal = bacaCache();
-  if (lokal) S = Object.assign(BLANK(), lokal);
-  migrasiJurnal(); migrasiPilih(); migrasiLabel();
-  if (usahaBaru) S.setup.nama = usahaBaru;
+  let jauh = null, luring = false;
   try {
     const { data, error } = await SB.from("buku").select("data").eq("user_id", AKUN.id).maybeSingle();
     if (error) throw error;
-    const jauh = data && data.data;
-    if (jauh && jauh.setup && num(jauh.ts) >= num(S.ts)){
-      S = Object.assign(BLANK(), jauh);
-      migrasiJurnal(); migrasiPilih(); migrasiLabel();
-      note("Tersinkron dengan server");
-    } else if (!jauh || !jauh.setup){
-      if (AKUN.usaha && !usahaBaru && S.setup.nama === "Toko Saya") S.setup.nama = AKUN.usaha;
-      await simpanJauh();
-      note(adaIsi(S) ? "Pembukuan di perangkat ini diangkat ke server" : "Tersimpan di server");
-    } else { await simpanJauh(); note("Tersinkron dengan server"); }
-  } catch(e){
-    note("Luring — perubahan tersimpan di perangkat ini dulu");
-  }
+    jauh = (data && data.data && data.data.setup) ? data.data : null;
+  } catch(e){ luring = true; }
+
+  const lokalLebihBaru = !!lokal && (!jauh || num(lokal.ts) > num(jauh.ts));
+  if (jauh && !lokalLebihBaru) pakai(jauh);
+  else if (lokal) pakai(lokal);
+  else migrasiJurnal(), migrasiPilih(), migrasiLabel();   // akun baru: buku kosong
+
+  if (usahaBaru) S.setup.nama = usahaBaru;
+  else if (!jauh && !lokal && AKUN.usaha && S.setup.nama === "Toko Saya") S.setup.nama = AKUN.usaha;
+
+  if (luring){ note("Luring — perubahan tersimpan di perangkat ini dulu"); return; }
+  if (!jauh || lokalLebihBaru){
+    await simpanJauh();
+    note(!jauh && adaIsi(S) ? "Pembukuan perangkat ini diangkat ke server" : "Tersimpan di server");
+  } else note("Tersinkron dengan server");
 }
 async function simpanJauh(){
   if (!SB || !AKUN) return false;
