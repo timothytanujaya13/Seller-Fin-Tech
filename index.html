@@ -119,6 +119,61 @@ button,input,select,textarea{font:inherit; color:inherit}
 }
 @media(max-width:640px){ .pd .pdb{width:min(640px,92vw)} }
 
+/* ---------- kartu paket ---------- */
+.pkt-baris{display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:16px; align-items:stretch}
+.pkt{
+  position:relative; display:flex; flex-direction:column; gap:10px;
+  background:var(--surface); border:1px solid var(--line); border-radius:var(--r);
+  padding:20px 18px; box-shadow:var(--shadow);
+}
+.pkt.sorot{border-color:var(--accent); box-shadow:0 1px 2px rgba(26,31,28,.06), 0 18px 40px -28px var(--accent)}
+.pkt.kini{background:var(--surface2)}
+.pkt .pita{
+  position:absolute; top:-10px; left:18px; background:var(--accent); color:var(--accent-ink);
+  font-size:10.5px; font-weight:700; letter-spacing:.06em; padding:3px 9px; border-radius:999px;
+}
+.pkt-kepala{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
+.pkt-kepala h3{font-size:20px}
+.pkt-pitch{margin:0; font-size:12.5px; color:var(--ink2); line-height:1.5; min-height:2.6em}
+.pkt-harga{
+  font-family:"IBM Plex Mono",monospace; font-size:24px; font-weight:600; letter-spacing:-.02em;
+  color:var(--ink); padding-top:2px;
+}
+.pkt-harga .satuan{font-size:12.5px; font-weight:400; color:var(--ink3); letter-spacing:0}
+.pkt-hemat{font-size:11.5px; color:var(--ink3); margin-top:-6px}
+.pkt-fitur{list-style:none; margin:4px 0 0; padding:0; display:grid; gap:7px; font-size:13px; color:var(--ink2)}
+.pkt-fitur li{display:flex; gap:9px; line-height:1.45}
+.pkt-fitur li::before{content:"✓"; color:var(--accent); font-weight:700; flex:none}
+.pkt-batas{
+  margin-top:auto; padding-top:12px; border-top:1px solid var(--line);
+  font-family:"IBM Plex Mono",monospace; font-size:11px; color:var(--ink3); line-height:1.5;
+}
+.pkt .btn{text-align:center; justify-content:center; display:block; padding:9px 14px}
+.pkt .btn[disabled]{opacity:.55; cursor:not-allowed}
+.pkt-baris.lima{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+@media(min-width:1040px){ .pkt-baris.lima{grid-template-columns:repeat(5,1fr)} }
+.pkt-baris.lima .pkt{padding:18px 15px; gap:8px}
+.pkt-baris.lima .pkt-kepala h3{font-size:18px}
+.pkt-baris.lima .pkt-harga{font-size:21px}
+.pkt.saran{border-color:var(--accent); background:var(--accent-soft)}
+.pkt .pita.saranp{background:var(--ink); color:var(--paper)}
+.pkt-kuota{font-size:12px; color:var(--ink3); letter-spacing:.01em; margin-top:-4px}
+.pkt-fitur.belum li::before{content:"○"; color:var(--warn); font-weight:700}
+/* panel pemakaian */
+.pmk{display:grid; grid-template-columns:minmax(220px,1fr) minmax(240px,1.4fr); gap:20px; align-items:end; margin-top:14px}
+@media(max-width:720px){ .pmk{grid-template-columns:1fr} }
+.pmk-angka{display:grid; gap:14px}
+.pmk-angka > div{display:grid; gap:1px}
+.pmk-angka .k{font-size:10.5px; letter-spacing:.09em; text-transform:uppercase; color:var(--ink3)}
+.pmk-angka .v{font-family:"IBM Plex Mono",monospace; font-size:23px; font-weight:600; letter-spacing:-.02em}
+.pmk-angka .m{font-size:11.5px; color:var(--ink3)}
+.pmk-grafik{display:flex; align-items:flex-end; gap:5px; height:118px; padding-top:6px}
+.pmk-bar{flex:1; min-width:0; display:flex; flex-direction:column; justify-content:flex-end; align-items:center; gap:5px; height:100%}
+.pmk-isi{width:100%; background:var(--accent); border-radius:4px 4px 2px 2px; opacity:.85}
+.pmk-bar span{font-size:9.5px; color:var(--ink3); font-family:"IBM Plex Mono",monospace}
+.pmk-saran{margin-top:16px; padding:11px 14px; border-radius:0 8px 8px 0;
+  background:var(--surface2); border-left:3px solid var(--accent); font-size:13px; color:var(--ink2); line-height:1.6}
+
 /* ---------- gerbang masuk ---------- */
 .gate{
   position:fixed; inset:0; z-index:200; background:var(--paper); overflow-y:auto;
@@ -505,7 +560,7 @@ const BLANK = () => ({
   produk: [], income: [], order: [], adjust: [], mutasi: [], iklan: [], saldo: [], beli: [], ops: [], jurnal: [], pajak: [],
   /* ringkasan pesanan yang melintasi batas bulan, dibuat otomatis saat impor.
      Ini yang membuat cut-off tetap bisa dihitung walau datanya diringkas per hari. */
-  akrual: [], akrualSku: [], aset: [], varian: [], resep: [],
+  akrual: [], akrualSku: [], aset: [], varian: [], resep: [], manual: [],
   toko: []
 });
 let S = BLANK();
@@ -858,6 +913,14 @@ function biayaRataRata(){
       (jual[k] ||= {})[b] = (jual[k][b] || 0) + u.qty;
     }
   }
+  for (const x of (S.manual || [])){          // penjualan manual juga mengeluarkan barang
+    const b = String(x.tgl || "").slice(0,7); if (!b) continue;
+    bulanSet.add(b);
+    for (const u of uraiUnit(x, VAR, RES)){
+      const k = normKode(u.kode); if (!k) continue;
+      (jual[k] ||= {})[b] = (jual[k][b] || 0) + u.qty;
+    }
+  }
   const bulan = [...bulanSet].sort();
   const avg = new Map(), akhir = {};
   const semuaSku = new Set([...Object.keys(beli), ...Object.keys(jual), ...Object.keys(AWAL)]);
@@ -1127,10 +1190,16 @@ function compute(m, a){
   const pajakMasa = {}, brutoTahun = {};
   let dasarKena = 0;
   {
-    const urut = incomeToko.filter(x => x.tgl).slice().sort((a,b) => a.tgl < b.tgl ? -1 : a.tgl > b.tgl ? 1 : 0);
+    /* Peredaran bruto = penjualan marketplace DAN penjualan manual. Keduanya
+       peredaran usaha yang sama di mata PPh Final, jadi ambang Rp 500 juta
+       dihitung dari gabungannya, bukan dari marketplace saja. */
+    const urut = incomeToko.filter(x => x.tgl).map(x => ({ tgl:x.tgl, d: dasarBaris(x) }))
+      .concat((S.manual || []).filter(x => x.tgl && inToko(x))
+        .map(x => ({ tgl:x.tgl, d: num(x.qty) * num(x.harga) - num(x.diskon) })))
+      .sort((a,b) => a.tgl < b.tgl ? -1 : a.tgl > b.tgl ? 1 : 0);
     const kum = {};
     for (const x of urut){
-      const y = yearOf(x.tgl), d = dasarBaris(x);
+      const y = yearOf(x.tgl), d = x.d;
       const sebelum = kum[y] || 0, sesudah = sebelum + d;
       kum[y] = sesudah;
       if (x.tgl <= batasAkhir) brutoTahun[y] = sesudah;
@@ -1142,6 +1211,8 @@ function compute(m, a){
       pajakMasa[b].dasar += d; pajakMasa[b].kena += kena;
     }
   }
+  for (const x of (S.manual || [])) if (pakai(x))
+    omzetBasis += num(x.qty) * num(x.harga) - num(x.diskon);
   let pphTerutang = 0, pphDikredit = 0;
   if (S.setup.pphAktif){
     pphTerutang = dasarKena * num(S.setup.tarifPph);
@@ -1175,6 +1246,24 @@ function compute(m, a){
     bulanan[monthOf(tAkui)-1].hpp += h;
     hppDiakui += h; jualDiakui += num(x.qty) * num(x.harga);
   }
+  /* Penjualan manual — di luar marketplace. Tidak ada biaya platform, tidak ada
+     pencairan: uangnya langsung ke Kas, Bank, atau menggantung sebagai Piutang. */
+  for (const x of (S.manual || [])){
+    if (!pakai(x)) continue;
+    const bruto = num(x.qty) * num(x.harga), disk = num(x.diskon);
+    if (!bruto && !disk) continue;
+    const ppnK = ppnPart(bruto);
+    add(x.bayar === "Piutang" ? "1-130" : x.bayar === "Bank" ? "1-110" : "1-100", bruto - disk, 0);
+    if (disk) add("4-200", disk, 0);
+    add("4-100", 0, bruto - ppnK);
+    add("2-120", 0, ppnK);
+    const h = hppBaris(x, x.tgl);
+    if (h){ add("5-100", h, 0); add("1-140", 0, h); }
+    const m = monthOf(x.tgl) - 1;
+    if (m >= 0 && m < 12){ bulanan[m].omzet += bruto; bulanan[m].hpp += h; }
+    hppDiakui += h; jualDiakui += bruto;
+  }
+
   /* Retur: barang yang uangnya dikembalikan berarti keluar dari penjualan,
      jadi harga pokoknya dibalik dan barangnya kembali ke persediaan. */
   let hppRetur = 0;
@@ -1326,6 +1415,26 @@ function kotak(judul, teks, tombol){
     try { dlg2.showModal(); } catch(e){ dlg2.setAttribute("open",""); }
   });
 }
+/* Kotak tanya-isi, sepupu kotak() di atas — dialog sendiri, karena prompt()
+   bawaan peramban diabaikan di dalam iframe ber-sandbox. */
+function kotakIsi(judul, keterangan){
+  return new Promise(res => {
+    document.getElementById("d2-t").textContent = judul;
+    const b = document.getElementById("d2-b");
+    b.innerHTML = `<div style="font-size:13.5px;line-height:1.6;margin-bottom:12px">${esc(keterangan || "")}</div>
+      <input type="text" id="d2-isi" autocomplete="off" style="width:100%">`;
+    const f = document.getElementById("d2-f");
+    f.innerHTML = `<button type="button" class="btn ghost" data-d2i="batal">Batal</button>
+      <button type="button" class="btn primary" data-d2i="ok">Simpan</button>`;
+    const tutup = nilai => { dlg2.close(); res(nilai); };
+    f.querySelector('[data-d2i="batal"]').onclick = () => tutup(null);
+    f.querySelector('[data-d2i="ok"]').onclick = () => tutup((document.getElementById("d2-isi") || {}).value || "");
+    const inp = b.querySelector("#d2-isi");
+    inp.onkeydown = e => { if (e.key === "Enter"){ e.preventDefault(); tutup(inp.value); } };
+    try { dlg2.showModal(); } catch(e){ dlg2.setAttribute("open",""); }
+    setTimeout(() => { try { inp.focus(); } catch(e){} }, 30);
+  });
+}
 const pesan = (teks, judul) => kotak(judul || "Selesai", teks, [{ label:"Tutup", gaya:"primary", nilai:true }]);
 const konfirmasi = (teks, judul, ya) => kotak(judul || "Perlu konfirmasi", teks, [
   { label:"Batal", gaya:"ghost", nilai:false },
@@ -1425,9 +1534,10 @@ function kartuMasuk(){
   return `<h2>Masuk</h2>
     <p class="gsub">Masuk ke pembukuan Anda dengan email dan kata sandi yang Anda daftarkan.</p>
     ${barisPesan}
-    <div class="field"><label for="g-email">Email</label>
-      <input type="email" id="g-email" autocomplete="username" value="${esc(emailTerakhir())}" placeholder="nama@email.com"></div>
-    ${kotakSandi("g-sandi", "Kata sandi", "current-password", "••••••••")}
+    <div class="field"><label for="g-email">Email, atau nama pengguna staf</label>
+      <input type="text" id="g-email" autocomplete="username" value="${esc(emailTerakhir())}" placeholder="nama@email.com">
+      <span style="font-size:11px;color:var(--ink3)">Staf: ketik nama pengguna beserta kode toko, mis. <code>budi@k7m2xq</code></span></div>
+    ${kotakSandi("g-sandi", "Kata sandi", "current-password", "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022")}
     <button class="btn primary" id="g-masuk">Masuk</button>
     <div class="glink"><button type="button" class="tautan" id="g-ke-lupa">Lupa kata sandi?</button>
       <span>Belum punya akun? <button type="button" class="tautan" id="g-ke-daftar">Daftar</button></span></div>
@@ -1559,8 +1669,14 @@ function pesanGalat(e){
 
 async function cobaMasuk(){
   gpesan("");
-  const email = nilai("g-email").toLowerCase(), sandi = nilai("g-sandi");
-  if (!email || !sandi){ gpesan("Isi email dan kata sandi Anda."); return; }
+  /* Boleh diisi email pemilik, boleh juga nama pengguna staf — yang tanpa "@"
+     dilengkapi sendiri menjadi alamat internal. */
+  const ketikan = nilai("g-email");
+  const email = emailPengguna(ketikan), sandi = nilai("g-sandi");
+  if (!email || !sandi){ gpesan("Isi email atau nama pengguna, beserta kata sandinya."); return; }
+  if (!email.includes("@")){
+    gpesan("Kurang kode tokonya. Staf masuk dengan nama pengguna + kode toko, mis. budi@k7m2xq \u2014 " +
+           "kode itu ada di halaman Pengguna & Akses milik pemilik akun."); return; }
   const selesai = sibuk("g-masuk", "Memeriksa…");
   try {
     const { data, error } = await SB.auth.signInWithPassword({ email, password: sandi });
@@ -1639,9 +1755,15 @@ async function cobaSandiBaru(){
 
 /* ---------- masuk & data ---------- */
 async function masuk(user, usahaBaru){
-  AKUN = { id: user.id, email: user.email || "",
-           usaha: usahaBaru || ((user.user_metadata || {}).usaha) || "" };
+  /* induk = pemilik buku yang dibuka. Untuk pemilik, induk adalah dirinya sendiri;
+     untuk sub-akun, induknya majikannya — sehingga seluruh penyimpanan menunjuk
+     ke satu buku yang sama. Hari ini keduanya selalu sama, jadi tidak ada yang berubah. */
+  const meta = user.user_metadata || {};
+  AKUN = { id: user.id, email: user.email || "", nama: meta.nama || "",
+           usaha: usahaBaru || meta.usaha || "",
+           peran: meta.peran || "pemilik", induk: meta.induk || user.id };
   gerbang(null, kartuMemuat("Mengambil pembukuan Anda…"));
+  if (LANGGANAN.aktif) await bacaPaket();
   await muatBuku(usahaBaru);
   document.getElementById("gate").hidden = true;
   document.getElementById("app").hidden = false;
@@ -1652,7 +1774,7 @@ async function masuk(user, usahaBaru){
    cadangan bersama itu membuat buku satu akun terbuka — bahkan tertulis — di
    akun lain. Kunci lama "bbl:book" dari masa sebelum Supabase sengaja tidak
    pernah dibaca lagi; isinya sudah terangkat ke akun yang pertama memakainya. */
-const cacheKunci = () => "bbl:book:" + (AKUN ? AKUN.id : "tamu");
+const cacheKunci = () => "bbl:book:" + (AKUN ? (AKUN.induk || AKUN.id) : "tamu");
 function bacaCache(){
   if (!AKUN) return null;
   try {
@@ -1676,7 +1798,7 @@ async function muatBuku(usahaBaru){
   const lokal = bacaCache();
   let jauh = null, luring = false;
   try {
-    const { data, error } = await SB.from("buku").select("data").eq("user_id", AKUN.id).maybeSingle();
+    const { data, error } = await SB.from("buku").select("data").eq("user_id", AKUN.induk || AKUN.id).maybeSingle();
     if (error) throw error;
     jauh = (data && data.data && data.data.setup) ? data.data : null;
   } catch(e){ luring = true; }
@@ -1695,11 +1817,24 @@ async function muatBuku(usahaBaru){
     note(!jauh && adaIsi(S) ? "Pembukuan perangkat ini diangkat ke server" : "Tersimpan di server");
   } else note("Tersinkron dengan server");
 }
+/* Status langganan akun ini. Hanya dibaca kalau langganan sudah dinyalakan,
+   jadi selama masih rancangan tidak ada permintaan tambahan ke server sama
+   sekali — dan tidak masalah bila tabel "langganan" belum dibuat. */
+async function bacaPaket(){
+  if (!SB || !AKUN) return;
+  try {
+    const { data, error } = await SB.from("langganan")
+      .select("paket,status,berlaku_sampai").eq("user_id", AKUN.induk || AKUN.id).maybeSingle();
+    if (error || !data) return;
+    const hidup = !data.berlaku_sampai || new Date(data.berlaku_sampai) >= new Date();
+    AKUN.paket = (data.status === "aktif" && hidup) ? (data.paket || "gratis") : "gratis";
+  } catch(e){}
+}
 async function simpanJauh(){
   if (!SB || !AKUN) return false;
   try {
     const { error } = await SB.from("buku")
-      .upsert({ user_id: AKUN.id, usaha: S.setup.nama, data: S }, { onConflict: "user_id" });
+      .upsert({ user_id: AKUN.induk || AKUN.id, usaha: S.setup.nama, data: S }, { onConflict: "user_id" });
     return !error;
   } catch(e){ return false; }
 }
@@ -1920,6 +2055,23 @@ const TABLES = {
     ],
     def: { jenis:"2-130", bayar:"Bank" },
   },
+  manual: {
+    label: "Penjualan Manual", singular: "baris penjualan",
+    cols: [
+      { k:"tgl", h:"Tanggal", t:"date", w:122 },
+      { k:"no", h:"No. Invoice", t:"text", w:150 },
+      { k:"pelanggan", h:"Pelanggan", t:"text" },
+      { k:"sku", h:"SKU", t:"sku", w:150 },
+      { k:"nama", h:"Keterangan", t:"text" },
+      { k:"qty", h:"Qty", t:"n", w:80, one:true },
+      { k:"harga", h:"Harga Jual / unit", t:"n", one:true },
+      { k:"diskon", h:"Diskon", t:"n" },
+      { k:"bayar", h:"Pembayaran", t:"sel", opts:["Kas","Bank","Piutang"], w:120 },
+      { k:"_tot", h:"Jumlah", t:"calc", f: x => num(x.qty)*num(x.harga) - num(x.diskon) },
+      { k:"_hpp", h:"HPP", t:"calc", f: x => num(x.qty) * modalBaris(x) },
+    ],
+    def: { bayar:"Kas" },
+  },
   jurnal: {
     label: "Jurnal Manual", singular: "jurnal",
     cols: [
@@ -1984,6 +2136,7 @@ const PANDUAN = {
   ops: "Semua pengeluaran di luar marketplace: gaji, sewa, listrik, packing, transportasi. Kolom Perlakuan Pajak menentukan apakah biaya itu boleh mengurangi penghasilan kena pajak — sumbangan, sanksi pajak, dan keperluan pribadi pemilik termasuk yang tidak boleh (Pasal 9 UU PPh) dan muncul sebagai beda tetap di Rekonsiliasi Fiskal.",
   aset: "Daftar aset tetap sekaligus mesin penyusutannya. Penyusutan komersial memakai garis lurus atas harga perolehan dikurangi nilai residu selama umur ekonomis yang Anda tetapkan, dan dijurnal otomatis tiap bulan — jangan buat jurnal manual lagi untuk penyusutan. Bulan mulainya mengikuti pilihan Awal penyusutan komersial di Pengaturan, termasuk konvensi tanggal 15 bila Anda memakainya; penyusutan fiskal tidak ikut, karena UU PPh mewajibkan dimulai pada bulan pengeluaran. Kelompok fiskal mengikuti UU PPh Pasal 11: Kelompok 1 empat tahun, Kelompok 2 delapan tahun, Kelompok 3 enam belas tahun, Kelompok 4 dua puluh tahun, bangunan permanen dua puluh tahun dan tidak permanen sepuluh tahun; bangunan hanya boleh garis lurus. Selisih penyusutan komersial dan fiskal muncul sebagai beda temporer di Rekonsiliasi Fiskal. Kalau perolehannya sudah Anda catat lewat jurnal manual atau saldo awal, pilih Sudah dicatat terpisah agar tidak terhitung dua kali.",
   pajak: "Setoran pajak yang Anda bayar sendiri lewat kode billing — bukan yang dipotong marketplace. Beban PPh Final sudah dihitung otomatis tiap kali penghasilan masuk dan menumpuk di akun Utang PPh Final UMKM; halaman ini yang melunasinya. Jadi cukup catat tanggal setor, masa pajaknya, dan kode billing atau NTPN dari bukti penerimaan negara. Jangan buat jurnal manual lagi untuk ini — bebannya akan terhitung dua kali.",
+  manual: "Penjualan di luar marketplace — pesanan lewat WhatsApp, pembeli yang datang langsung, atau penjualan borongan. Satu invoice boleh memuat banyak barang: isi kepalanya sekali (tanggal, nomor invoice, pelanggan, cara bayar) lalu tambahkan barisnya. Angkanya masuk ke Penjualan Bruto seperti penjualan marketplace, harga pokoknya keluar dari Persediaan, dan stok SKU-nya ikut berkurang. Pilihan Pembayaran menentukan ke mana uangnya masuk: Kas, Bank, atau Piutang bila belum dibayar. Invoice PDF-nya bisa diunduh kapan saja dan datanya tetap tersimpan di sini.",
   jurnal: "Untuk apa pun yang tidak masuk kategori lain: setoran modal, prive, penyusutan, pembelian aset, retur, pembayaran pajak, pelunasan utang.",
   produk: "Harga Modal per unit adalah dasar perhitungan HPP dan margin per SKU. Satu ID Produk di platform bisa memuat banyak variasi (ukuran, warna) yang semuanya memakai harga modal ini — kalau modalnya berbeda antar variasi, isi di halaman Variasi Produk.",
   resep: "Tempat mendaftarkan isi SKU kombinasi (paket, bundling, lusinan). Platform hanya mencatat satu unit BOX-MIX-Z terjual, padahal yang keluar gudang 5 SATUAN-A dan 5 SATUAN-B \u2014 di sinilah Anda memberitahukan isinya, persis seperti fitur SKU Kombinasi di BigSeller. Setelah itu Anda cukup mencatat pembelian dalam satuan saja: kartu stok, harga pokok, dan usulan harga modal semuanya memakai komponennya. Omzet dan jumlah unit terjual tetap tercatat di SKU kombinasi \u2014 itulah yang benar-benar dijual dan harganya memang beda dari satuan \u2014 sedangkan harga modalnya dijumlahkan otomatis dari komponen, jadi margin paketnya tetap benar. Peruraian dihitung saat laporan dibuat, bukan saat impor, jadi berlaku surut ke seluruh data yang sudah ada dan langsung ikut berubah kalau resepnya Anda perbaiki. Resepnya satu tingkat: komponen harus SKU satuan, bukan kombinasi lain.",
@@ -2004,6 +2157,7 @@ const NAV = [
   ["b","ops","Biaya Operasional"],
   ["b","aset","Aset Tetap"],
   ["b","pajak","Setoran Pajak"],
+  ["b","manual","Penjualan Manual"],
   ["b","jurnal","Jurnal Manual"],
   ["c","labarugi","Laba Rugi"],
   ["c","neraca","Neraca"],
@@ -2016,13 +2170,27 @@ const NAV = [
   ["d","resep","Resep SKU Kombinasi"],
   ["d","varian","Variasi Produk"],
   ["d","akun","Akun & Saldo Awal"],
+  ["d","pengguna","Pengguna & Akses"],
+  ["d","paket","Paket & Langganan"],
   ["d","setup","Pengaturan"],
 ];
 let page = "ringkasan";
+/* Halaman mana menuntut kewenangan apa. Yang tidak disebut boleh dibuka siapa pun
+   yang sudah masuk. Ini lapis kenyamanan; penjagaan yang sebenarnya ada di RLS. */
+const NAV_HAK = {
+  ringkasan:"laporan", labarugi:"laporan", neraca:"laporan", aruskas:"laporan",
+  rekon:"laporan", cutoff:"laporan", fiskal:"laporan", neracasaldo:"laporan",
+  akun:"pengaturan", setup:"pengaturan", pengguna:"pengguna", paket:"pengguna",
+  income:"input", order:"input", adjust:"input", mutasi:"input", iklan:"input", manual:"input",
+  saldo:"input", beli:"input", ops:"input", aset:"input", pajak:"input", jurnal:"input",
+  produk:"input", resep:"input", varian:"input",
+};
+const bolehHalaman = id => !NAV_HAK[id] || boleh(NAV_HAK[id]);
+const halamanPertama = () => boleh("laporan") ? "ringkasan" : boleh("input") ? "income" : "labarugi";
 
 function renderNav(){
   for (const g of ["a","b","c","d"]){
-    document.getElementById("nav-"+g).innerHTML = NAV.filter(n => n[0]===g).map(([,id,label]) => {
+    document.getElementById("nav-"+g).innerHTML = NAV.filter(n => n[0]===g && bolehHalaman(n[1])).map(([,id,label]) => {
       const c = TABLES[id] ? `<span class="cnt">${S[id].length}</span>` : "";
       return `<button data-nav="${id}" aria-current="${page===id}">${esc(label)}${c}</button>`;
     }).join("");
@@ -2031,6 +2199,7 @@ function renderNav(){
 
 /* ============================ render ============================ */
 function render(){
+  if (!bolehHalaman(page)) page = halamanPertama();
   const R = compute();
   document.getElementById("tb-store").textContent = S.setup.nama || "Toko Saya";
   document.getElementById("tb-per").textContent = fmtD(S.setup.mulai) + " – " + fmtD(S.setup.akhir);
@@ -2039,8 +2208,12 @@ function render(){
   bal.className = "chip " + (ok ? "ok" : "bad");
   bal.innerHTML = `<span class="dot"></span>${ok ? "Buku seimbang" : "Selisih " + rp(R.selisih)}`;
   const ak = document.getElementById("tb-akun");
-  ak.textContent = (AKUN && AKUN.email) || "";
-  ak.title = "Pembukuan ini milik akun " + ((AKUN && AKUN.email) || "—");
+  const pr = PERAN[peranSaya()] || PERAN.pemilik;
+  const namaSaya = (AKUN && (AKUN.nama || AKUN.email)) || "";
+  ak.textContent = namaSaya + (peranSaya() !== "pemilik" ? " · " + pr.nama : "");
+  ak.title = peranSaya() === "pemilik"
+    ? "Pemilik akun ini: " + namaSaya
+    : "Anda masuk sebagai " + pr.nama + " — " + pr.ringkas;
   const ob = document.getElementById("tb-outlet");
   const semuaOutlet = daftarOutlet();
   ob.hidden = semuaOutlet.length < 2;
@@ -2052,13 +2225,14 @@ function render(){
     : (page === "jurnal" && !mentah) ? viewJurnal()
     : (page === "aset") ? viewAset()
     : (page === "beli") ? viewBeli()
+    : (page === "manual" && !mentahManual) ? viewManual()
     : (page === "resep" && !mentahResep) ? viewResep()
     : TABLES[page] ? viewTable(page) : ({
     ringkasan: () => viewRingkasan(R), labarugi: () => viewLabaRugi(),
     neraca: () => viewNeraca(), aruskas: () => viewArusKas(),
     neracasaldo: () => viewNeracaSaldo(R), rekon: () => viewRekon(R), cutoff: () => viewCutoff(R),
     fiskal: () => viewFiskal(),
-    akun: () => viewAkun(R), setup: () => viewSetup(),
+    akun: () => viewAkun(R), setup: () => viewSetup(), paket: () => viewPaket(), pengguna: () => viewPengguna(),
   }[page])();
   if (page === "ringkasan") drawCharts(R);
 }
@@ -2232,7 +2406,7 @@ function viewTable(key){
     <button class="btn" data-import="${key}">Impor file platform</button>
     ${key === "mutasi" && rows.length ? `<button class="btn primary" id="tarik-otomatis">Buat Penarikan Dana otomatis</button>` : ""}
     ${rows.length ? `<button class="btn" data-xls="${key}">Unduh CSV</button>` : ""}
-    ${rows.length ? `<button class="btn danger" data-clear="${key}">Kosongkan tabel</button>` : ""}
+    ${rows.length && boleh("hapus") ? `<button class="btn danger" data-clear="${key}">Kosongkan tabel</button>` : ""}
     <span class="spacer"></span>
     <span class="status">${rows.length} ${esc(T.singular)}${!all ? ` · menampilkan ${LIM} terakhir` : ""}</span>
     ${!all ? `<button class="btn ghost" data-showall="${key}">Tampilkan semua</button>` : ""}
@@ -2313,6 +2487,22 @@ function rekapSku(){
     (g.perToko[tk] ||= { qty:0, omzet:0 });
     g.perToko[tk].qty += q; g.perToko[tk].omzet += o;
   }
+  /* Penjualan manual masuk ke rekap yang sama — satu SKU satu baris, apa pun
+     salurannya, supaya margin dan stoknya tidak terpecah dua. */
+  for (const x of (S.manual || [])){
+    if (!inToko(x)) continue;
+    const m = String(x.tgl || "").slice(0,7);
+    if (!m || m < dari || m > sampai) continue;
+    const g = ambil(kunci(x), String(x.sku || ""));
+    if (!g.nama && x.nama) g.nama = x.nama;
+    const q = num(x.qty), o = q * num(x.harga) - num(x.diskon);
+    g.qty += q; g.omzet += o; g.baris++; g.manual = (g.manual || 0) + q;
+    (g.bulan[m] ||= { qty:0, omzet:0 });
+    g.bulan[m].qty += q; g.bulan[m].omzet += o;
+    const tk = x.toko || "(tanpa penanda toko)";
+    (g.perToko[tk] ||= { qty:0, omzet:0 });
+    g.perToko[tk].qty += q; g.perToko[tk].omzet += o;
+  }
   /* Unit yang benar-benar keluar gudang, sudah lewat resep: baris SKU kombinasi
      berubah jadi komponennya, baris biasa tetap dirinya sendiri. */
   const keluar = new Map();
@@ -2327,6 +2517,15 @@ function rekapSku(){
         const gk = ambil(u.kode, "");
         gk.dariResep += u.qty;
       }
+    }
+  }
+  for (const x of (S.manual || [])){              // stok berkurang juga karenanya
+    if (!inToko(x)) continue;
+    const m = String(x.tgl || "").slice(0,7);
+    if (!m || m > sampai) continue;
+    for (const u of uraiUnit(x, VAR, RES)){
+      const k = normKode(u.kode);
+      keluar.set(k, (keluar.get(k) || 0) + u.qty);
     }
   }
   for (const x of S.beli){
@@ -2596,6 +2795,180 @@ function bukaGabung(){
   dlg.showModal();
 }
 
+
+/* ============================ penjualan manual ============================
+   Penjualan di luar marketplace: pesanan WhatsApp, pembeli yang datang langsung,
+   borongan. Disimpan satu baris per barang (supaya mesin akuntansi dan kartu stok
+   tidak perlu diubah), tetapi di layar dikelompokkan kembali menjadi invoice utuh
+   — dan invoice itulah yang bisa diunduh sebagai PDF. */
+let mentahManual = false;
+const SEP_INV_M = " ›› ";
+const kunciInvoice = x => [platDari(x), x.toko || "", x.tgl || "",
+  String(x.no || "").trim(), String(x.pelanggan || "").trim(), x.bayar || "Kas"].join(SEP_INV_M);
+
+function grupInvoice(){
+  const G = new Map();
+  (S.manual || []).forEach((x, i) => {
+    if (!inToko(x)) return;
+    const k = kunciInvoice(x);
+    let g = G.get(k);
+    if (!g){ g = { k, tgl:x.tgl || "", no:String(x.no || "").trim(), pelanggan:String(x.pelanggan || "").trim(),
+                   bayar:x.bayar || "Kas", plat:platDari(x), toko:x.toko || "", baris:[] }; G.set(k, g); }
+    g.baris.push({ i, x });
+  });
+  return [...G.values()].map(g => {
+    g.bruto = g.baris.reduce((a,b) => a + num(b.x.qty) * num(b.x.harga), 0);
+    g.diskon = g.baris.reduce((a,b) => a + num(b.x.diskon), 0);
+    g.qty = g.baris.reduce((a,b) => a + num(b.x.qty), 0);
+    g.hpp = g.baris.reduce((a,b) => a + num(b.x.qty) * modalBaris(b.x), 0);
+    g.total = g.bruto - g.diskon;
+    g.laba = g.total - g.hpp;
+    return g;
+  }).sort((a,b) => a.tgl < b.tgl ? 1 : a.tgl > b.tgl ? -1 : 0);
+}
+function nomorInvoiceBaru(tgl){
+  const hari = String(tgl || "").replace(/-/g, "");
+  const awalan = "INV-" + hari + "-";
+  let n = 0;
+  for (const x of (S.manual || [])){
+    const m = String(x.no || "").match(/^INV-\d{8}-(\d+)$/);
+    if (m && String(x.no).startsWith(awalan)) n = Math.max(n, +m[1]);
+  }
+  return awalan + String(n + 1).padStart(3, "0");
+}
+
+function viewManual(){
+  if (mentahManual) return viewTable("manual");
+  const G = grupInvoice();
+  const P = Object.fromEntries(S.produk.map(p => [String(p.sku), p]));
+  const dl = `<datalist id="dl-sku-m">${S.produk.slice(0, 4000).map(p =>
+      `<option value="${esc(p.sku)}">${esc([p.kode, p.nama].filter(Boolean).join(" · ").slice(0,70))}</option>`).join("")}</datalist>`;
+  const T = G.reduce((a,g) => ({ total:a.total + g.total, hpp:a.hpp + g.hpp, qty:a.qty + g.qty }), { total:0, hpp:0, qty:0 });
+  const piutang = G.filter(g => g.bayar === "Piutang").reduce((a,g) => a + g.total, 0);
+
+  const kartu = G.map((g, gi) => {
+    const baris = g.baris.map(({ i, x }) => {
+      const p = P[String(x.sku)] || {};
+      const jml = num(x.qty) * num(x.harga) - num(x.diskon);
+      const modal = modalBaris(x), hpp = num(x.qty) * modal;
+      return `<tr>
+        <td><input type="text" list="dl-sku-m" data-ml="${i}:sku" value="${esc(x.sku || "")}" placeholder="ketik SKU"></td>
+        <td><input type="text" data-ml="${i}:nama" value="${esc(x.nama || p.nama || "")}" placeholder="${esc(p.nama || "keterangan")}"></td>
+        <td><input class="num n" data-ml="${i}:qty" value="${x.qty ? RE_ID.format(num(x.qty)) : ""}" inputmode="numeric"></td>
+        <td><input class="num n" data-ml="${i}:harga" value="${x.harga ? RE_ID.format(num(x.harga)) : ""}" inputmode="numeric"></td>
+        <td><input class="num n" data-ml="${i}:diskon" value="${x.diskon ? RE_ID.format(num(x.diskon)) : ""}" inputmode="numeric"></td>
+        <td class="calc">${rp(jml)}</td>
+        <td class="calc"${modal ? "" : ' style="color:var(--warn)"'}>${modal ? rp(hpp) : "modal belum diisi"}</td>
+        <td style="width:34px"><button class="rowdel" data-mdel="${i}" title="Hapus baris">&times;</button></td></tr>`;
+    }).join("");
+    return `<div class="card" style="margin-bottom:14px"><div class="bd">
+      <div class="grid2" style="margin-bottom:10px">
+        <div class="field" style="max-width:150px"><label>Tanggal</label>
+          <input type="date" data-mg="${gi}:tgl" value="${esc(g.tgl)}"></div>
+        <div class="field" style="max-width:180px"><label>No. Invoice</label>
+          <input type="text" data-mg="${gi}:no" value="${esc(g.no)}" placeholder="INV-..."></div>
+        <div class="field"><label>Pelanggan</label>
+          <input type="text" data-mg="${gi}:pelanggan" value="${esc(g.pelanggan)}" placeholder="Nama pembeli"></div>
+        <div class="field" style="max-width:150px"><label>Pembayaran</label>
+          <select data-mg="${gi}:bayar">${["Kas","Bank","Piutang"].map(o =>
+            `<option${g.bayar===o?" selected":""}>${o}</option>`).join("")}</select></div>
+      </div>
+      <div class="tablewrap"><table>
+        <thead><tr><th style="width:160px">SKU</th><th>Keterangan</th>
+          <th class="r" style="width:80px">Qty</th><th class="r" style="width:120px">Harga</th>
+          <th class="r" style="width:110px">Diskon</th><th class="r" style="width:120px">Jumlah</th>
+          <th class="r" style="width:120px">HPP</th><th></th></tr></thead>
+        <tbody>${baris}</tbody>
+        <tfoot><tr><td><strong>${g.baris.length} barang</strong></td><td></td>
+          <td class="calc"><strong>${rp(g.qty)}</strong></td><td></td>
+          <td class="calc"><strong>${g.diskon ? rp(g.diskon) : "–"}</strong></td>
+          <td class="calc"><strong>${rp(g.total)}</strong></td>
+          <td class="calc"><strong>${rp(g.hpp)}</strong></td><td></td></tr></tfoot>
+      </table></div>
+      <div class="toolbar" style="margin:10px 0 0">
+        <button class="btn" data-madd="${gi}">+ Tambah barang</button>
+        <button class="btn primary" data-mpdf="${gi}">Unduh invoice PDF</button>
+        <span class="chip ${g.bayar === "Piutang" ? "" : "ok"}"
+          style="${g.bayar === "Piutang" ? "background:var(--warn-soft);color:var(--warn)" : ""}">
+          ${g.bayar === "Piutang" ? "Belum dibayar" : "Lunas · " + esc(g.bayar)}</span>
+        <span class="spacer"></span>
+        <span class="status">Laba kotor ${rpS(g.laba)}</span>
+        <button class="btn danger" data-mdelinv="${gi}">Hapus invoice</button>
+      </div>
+    </div></div>`;
+  }).join("");
+
+  return `
+  <div class="pagehead"><h1>Penjualan Manual</h1>
+    ${pandu(esc(PANDUAN.manual))}</div>
+  <div class="toolbar">
+    <button class="btn primary" id="manual-baru">+ Invoice baru</button>
+    ${(S.manual || []).length ? `<button class="btn" data-xls="manual">Unduh CSV</button>` : ""}
+    <span class="spacer"></span>
+    <span class="status">${G.length} invoice · ${(S.manual || []).filter(inToko).length} baris</span>
+    <button class="btn ghost" id="manual-mentah">Data mentah</button>
+  </div>
+  ${G.length ? `<div class="kpis">
+    <div class="kpi hero"><div class="k">Penjualan manual</div><div class="v">${rp(T.total)}</div>
+      <div class="m">${G.length} invoice · ${rp(T.qty)} unit</div></div>
+    <div class="kpi"><div class="k">Harga pokoknya</div><div class="v">${rp(T.hpp)}</div>
+      <div class="m">keluar dari persediaan</div></div>
+    <div class="kpi"><div class="k">Laba kotor</div><div class="v">${rpS(T.total - T.hpp)}</div>
+      <div class="m">${T.total ? pct((T.total - T.hpp) / T.total) : "–"} margin</div></div>
+    ${piutang ? `<div class="kpi"><div class="k">Belum dibayar</div><div class="v neg">${rp(piutang)}</div>
+      <div class="m">tercatat sebagai Piutang Lain-lain</div></div>` : ""}
+  </div>` : ""}
+  ${G.length ? kartu : `<div class="tablewrap"><div class="empty">Belum ada penjualan manual.
+    Tekan <strong>+ Invoice baru</strong> untuk mencatat penjualan di luar marketplace —
+    angkanya langsung masuk laporan dan stoknya ikut berkurang.</div></div>`}
+  ${dl}`;
+}
+
+/* ---------- invoice PDF ----------
+   Memakai pembuat PDF yang sama dengan laporan keuangan, jadi tidak ada pustaka
+   tambahan dan hasilnya bisa diunduh walau sedang tanpa internet. */
+async function unduhInvoice(gi){
+  const g = grupInvoice()[gi];
+  if (!g){ pesan("Invoice tidak ditemukan."); return; }
+  const P = Object.fromEntries(S.produk.map(p => [String(p.sku), p]));
+  const baris = g.baris.map(({ x }) => {
+    const p = P[String(x.sku)] || {};
+    /* Kolom Jumlah sengaja SEBELUM diskon, supaya Subtotal benar-benar jumlah
+       kolom di atasnya dan diskonnya muncul sekali saja, di barisnya sendiri. */
+    return { jenis:"item", sel:[ String(x.sku || "-"), (x.nama || p.nama || "").slice(0, 46),
+      RE_ID.format(num(x.qty)), rp(num(x.harga)), num(x.diskon) ? rp(num(x.diskon)) : "-",
+      rp(num(x.qty) * num(x.harga)) ] };
+  });
+  baris.push({ jenis:"tot", sel:["Subtotal", "", RE_ID.format(g.qty), "", "", rp(g.bruto)] });
+  if (g.diskon) baris.push({ jenis:"item", sel:["Diskon", "", "", "", "", "(" + rp(g.diskon) + ")"] });
+  baris.push({ jenis:"grand", sel:["TOTAL", "", "", "", "", rp(g.total)] });
+
+  const tabel = [{
+    kolom: [{t:"SKU",w:0.17},{t:"Keterangan",w:0.33},{t:"Qty",w:0.08,a:"r"},
+            {t:"Harga",w:0.14,a:"r"},{t:"Diskon",w:0.12,a:"r"},{t:"Jumlah",w:0.16,a:"r"}],
+    baris,
+  }, {
+    judul: "Pembayaran",
+    kolom: [{t:"Keterangan",w:0.62},{t:"",w:0.38,a:"r"}],
+    baris: [
+      { jenis:"item", sel:["Cara pembayaran", g.bayar === "Piutang" ? "Belum dibayar" : g.bayar] },
+      { jenis:"item", sel:["Status", g.bayar === "Piutang" ? "MENUNGGU PEMBAYARAN" : "LUNAS"] },
+      { jenis:"item", sel:["Jumlah yang harus dibayar",
+          g.bayar === "Piutang" ? "Rp " + rp(g.total) : "— sudah diterima"] },
+    ],
+  }];
+
+  await unduhPdf(`invoice-${(g.no || "tanpa-nomor").replace(/[^A-Za-z0-9-]/g, "")}.pdf`, {
+    judul: (S.setup.nama || "Toko") + " — Invoice",
+    sub: [g.no ? "No. " + g.no : "", fmtD(g.tgl), g.pelanggan ? "Kepada: " + g.pelanggan : ""]
+      .filter(Boolean).join("  ·  "),
+    kaki: S.setup.nama || "",
+    tabel,
+    catatan: "Invoice ini dibuat otomatis dari catatan penjualan " + (S.setup.nama || "toko ini") +
+      ". Barang yang sudah dibeli dapat ditukar sesuai kesepakatan. Simpan invoice ini sebagai bukti pembelian." +
+      (g.bayar === "Piutang" ? " Pembayaran belum diterima pada saat invoice ini dicetak." : ""),
+  });
+}
 
 /* ============================ faktur pembelian ============================
    Satu faktur = beberapa baris SKU. Di penyimpanan tetap satu baris per SKU
@@ -4022,6 +4395,455 @@ function viewAkun(R){
        <td class="calc"><strong>${rp(totD)}</strong></td><td class="calc"><strong>${rp(totK)}</strong></td></tr></tfoot>
    </table></div>`;
 }
+/* ============================ pengguna & peran ============================
+   KERANGKA — BELUM AKTIF (SUBAKUN.aktif = false).
+   Sub-akun di sini tetap akun Supabase yang sah, hanya alamat emailnya dibuatkan
+   dari nama pengguna: "andi" menjadi andi@<domain>. Stafnya cukup mengetik "andi"
+   dan kata sandinya; halaman masuk yang menambahkan sisanya.
+   Pembuatannya TIDAK bisa dari halaman ini — perlu kunci service_role yang hanya
+   boleh hidup di server (lihat edge-buat-pengguna.ts). Itu disengaja: kalau kunci
+   itu ditaruh di halaman web, siapa pun yang membuka kode sumbernya bisa membuat
+   akun, membaca, dan menghapus data siapa pun. */
+const SUBAKUN = {
+  aktif: true,                            // sub-akun menyala
+  /* Akhiran alamat buatan. ".internal" bukan asal pilih: itu akhiran yang
+     dicadangkan ICANN khusus untuk pemakaian internal dan dijamin TIDAK PERNAH
+     bisa dimiliki siapa pun, sehingga tidak mungkin bentrok dengan alamat orang
+     lain dan tidak mungkin ada surel nyasar. Tidak perlu beli domain.
+     Alamat lengkapnya <pengguna>@<kode toko>.<domain> — kode tokonya acak dan
+     dibuatkan server, supaya "budi" di toko lain tidak pernah bentrok dengan
+     "budi" di toko Anda. */
+  domain: "sellerfintech.internal",
+  fungsi: "kelola-pengguna",              // nama Edge Function di Supabase
+};
+const PERAN = {
+  pemilik: { nama:"Pemilik", ringkas:"Pemegang akun dan tagihan. Satu-satunya yang boleh menambah pengguna.",
+    hak:{ input:true, laporan:true, pengaturan:true, hapus:true, pengguna:true } },
+  admin:   { nama:"Admin", ringkas:"Tangan kanan: mengimpor, mengisi, dan membaca semua laporan.",
+    hak:{ input:true, laporan:true, pengaturan:false, hapus:true, pengguna:false } },
+  akuntan: { nama:"Akuntan", ringkas:"Menutup buku dan membaca semuanya, tanpa mengosongkan tabel.",
+    hak:{ input:true, laporan:true, pengaturan:false, hapus:false, pengguna:false } },
+  staf:    { nama:"Staf Input", ringkas:"Hanya memasukkan data harian. Laporan laba rugi tidak dibuka.",
+    hak:{ input:true, laporan:false, pengaturan:false, hapus:false, pengguna:false } },
+  pelihat: { nama:"Pelihat", ringkas:"Membaca saja — cocok untuk pemodal atau konsultan pajak.",
+    hak:{ input:false, laporan:true, pengaturan:false, hapus:false, pengguna:false } },
+};
+const HAK_JUDUL = { input:"Input & impor data", laporan:"Buka laporan keuangan",
+  pengaturan:"Ubah Pengaturan & periode", hapus:"Hapus / kosongkan tabel", pengguna:"Kelola pengguna" };
+
+const peranSaya = () => (AKUN && AKUN.peran) || "pemilik";
+/* Dipanggil fitur yang kelak dibatasi. Selama sub-akun belum dinyalakan,
+   semuanya dijawab boleh, jadi tidak ada perilaku yang berubah hari ini. */
+const boleh = h => !SUBAKUN.aktif || !!(PERAN[peranSaya()] || PERAN.pemilik).hak[h];
+
+/* Kode toko milik akun ini — dibaca dari Supabase, dibuatkan server sekali saja. */
+let KODE_TOKO = "";
+const alamatSub = (pengguna, kode) =>
+  String(pengguna).trim().toLowerCase() + "@" + String(kode).trim().toLowerCase() + "." + SUBAKUN.domain;
+
+/* Yang diketik di kotak "Masuk" → alamat sebenarnya.
+   Aturannya satu dan mudah: alamat email sungguhan selalu ada titik sesudah "@"
+   (gmail.com, yahoo.co.id). Kode toko tidak pernah ada titiknya. Jadi
+     budi@k7m2xq      → budi@k7m2xq.<domain>   (sub-akun)
+     tim@gmail.com    → dibiarkan apa adanya   (pemilik) */
+const emailPengguna = t => {
+  const s = String(t ?? "").trim().toLowerCase();
+  const i = s.indexOf("@");
+  if (i < 1) return s;
+  const kanan = s.slice(i + 1);
+  return (!kanan || kanan.includes(".")) ? s : alamatSub(s.slice(0, i), kanan);
+};
+
+let ANGGOTA = null;          // null = belum dimuat
+let ANGGOTA_GALAT = "";
+
+async function muatAnggota(gambarUlang){
+  if (!SB || !AKUN) return;
+  try {
+    const { data, error } = await SB.from("anggota")
+      .select("anggota_id,nama,username,peran,aktif,dibuat").eq("induk_id", AKUN.id).order("dibuat");
+    if (error) throw error;
+    ANGGOTA = data || []; ANGGOTA_GALAT = "";
+    const { data: tk } = await SB.from("toko").select("kode").eq("induk_id", AKUN.id).maybeSingle();
+    KODE_TOKO = (tk && tk.kode) || "";
+  } catch(e){
+    ANGGOTA = [];
+    ANGGOTA_GALAT = /relation|does not exist|schema cache/i.test(String((e && e.message) || ""))
+      ? "Tabel pengguna belum ada di Supabase \u2014 jalankan supabase-pengguna.sql lebih dulu."
+      : pesanGalat(e);
+  }
+  if (gambarUlang && page === "pengguna") render();
+}
+/* Setiap perubahan pengguna lewat Edge Function, memakai token sesi Anda sendiri;
+   fungsi itulah yang memeriksa bahwa pemanggilnya memang pemilik akun. */
+async function panggilFungsi(aksi, isi){
+  const { data } = await SB.auth.getSession();
+  const token = data && data.session && data.session.access_token;
+  if (!token) throw new Error("Sesi Anda berakhir. Masuk kembali.");
+  const r = await fetch(SB_URL + "/functions/v1/" + SUBAKUN.fungsi, {
+    method: "POST",
+    headers: { "Content-Type":"application/json", "Authorization":"Bearer " + token, "apikey": SB_KEY },
+    body: JSON.stringify(Object.assign({ aksi }, isi)),
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.pesan || ("Gagal \u2014 kode " + r.status +
+    (r.status === 404 ? ". Edge Function \u201c" + SUBAKUN.fungsi + "\u201d belum dipasang." : "")));
+  return j;
+}
+
+function viewPengguna(){
+  const P = Object.entries(PERAN);
+  const hakKunci = Object.keys(HAK_JUDUL);
+  const matriks = `<div class="tablewrap"><table>
+    <thead><tr><th>Yang boleh dikerjakan</th>
+      ${P.map(([,v]) => `<th class="r" style="width:96px">${esc(v.nama)}</th>`).join("")}</tr></thead>
+    <tbody>${hakKunci.map(h => `<tr><td>${esc(HAK_JUDUL[h])}</td>
+      ${P.map(([,v]) => `<td class="calc" style="font-size:15px;color:${v.hak[h] ? "var(--accent)" : "var(--ink3)"}">
+        ${v.hak[h] ? "✓" : "—"}</td>`).join("")}</tr>`).join("")}
+    </tbody></table></div>`;
+
+  if (ANGGOTA === null) muatAnggota(true);          // dimuat sekali, lalu halaman digambar ulang
+  const barisAnggota = ANGGOTA === null
+    ? `<tr><td colspan="6"><div class="empty"><span class="gspin"></span>Memuat daftar pengguna…</div></td></tr>`
+    : !ANGGOTA.length
+    ? `<tr><td colspan="6"><div class="empty">Belum ada pengguna tambahan. Buat yang pertama lewat formulir di atas.</div></td></tr>`
+    : ANGGOTA.map(a => `<tr>
+        <td>${esc(a.nama || a.username)}</td>
+        <td class="n" style="font-size:12px">${esc(a.username)}<span style="color:var(--ink3)">@${esc(KODE_TOKO || "kode")}</span></td>
+        <td>${esc((PERAN[a.peran] || {}).nama || a.peran)}</td>
+        <td>${a.aktif ? `<span class="chip ok" style="font-size:10.5px">aktif</span>`
+                      : `<span class="chip" style="font-size:10.5px;background:var(--surface3);color:var(--ink3)">nonaktif</span>`}</td>
+        <td style="font-size:12px;color:var(--ink3)">${esc(fmtD(String(a.dibuat || "").slice(0,10)))}</td>
+        <td><div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn" style="padding:3px 9px;font-size:12px" data-pgsandi="${esc(a.anggota_id)}">Ganti sandi</button>
+          <button class="btn${a.aktif ? " danger" : ""}" style="padding:3px 9px;font-size:12px"
+            data-pgtoggle="${esc(a.anggota_id)}" data-hidup="${a.aktif ? "0" : "1"}">${a.aktif ? "Nonaktifkan" : "Aktifkan"}</button>
+        </div></td></tr>`).join("");
+
+  const peranOpsi = P.filter(([k]) => k !== "pemilik")
+    .map(([k,v]) => `<option value="${k}">${esc(v.nama)} — ${esc(v.ringkas)}</option>`).join("");
+
+  return head("Pengguna & Akses",
+    "Memberi admin atau staf akun sendiri untuk mengisi pembukuan ini, dengan batas kewenangan masing-masing.") +
+  `<div class="hint"><strong>Sub-akun sudah menyala.</strong>
+     Pengguna yang Anda buat di sini langsung bisa masuk dan mengisi pembukuan yang sama,
+     sebatas kewenangan perannya. Pembuatannya dikerjakan fungsi di server Supabase — kalau
+     tombolnya menjawab “belum dipasang”, pasang dulu <code>edge-kelola-pengguna.ts</code>
+     lewat dashboard Supabase.</div>
+
+  <div class="card" style="margin-bottom:18px"><div class="bd">
+    <div class="sh">Nama pengguna + kode toko, bukan email</div>
+    <p class="gsub" style="max-width:70ch">Staf Anda tidak perlu punya email. Mereka masuk dengan
+      nama pengguna yang Anda tentukan, diikuti <strong>kode toko</strong> Anda — halaman masuk
+      menambahkan sendiri sisanya menjadi alamat internal yang tidak pernah dikirimi surel:</p>
+    <div class="url" style="max-width:560px">andi@${esc(KODE_TOKO || "\u2026")}
+      &nbsp;\u2192&nbsp; andi@${esc(KODE_TOKO || "\u2026")}<span>.${esc(SUBAKUN.domain)}</span></div>
+    <div class="kpis" style="margin:14px 0 4px">
+      <div class="kpi hero"><div class="k">Kode toko Anda</div>
+        <div class="v" style="letter-spacing:.14em;font-variant-numeric:tabular-nums">${esc(KODE_TOKO || "belum dibuat")}</div>
+        <div class="m">${KODE_TOKO ? "berikan ke staf bersama nama penggunanya"
+          : "dibuatkan otomatis saat Anda membuat pengguna pertama"}</div></div>
+    </div>
+    <p class="status">Kode itu acak dan hanya milik akun Anda, jadi <strong>\u201cbudi\u201d di toko
+      lain tidak pernah bentrok dengan \u201cbudi\u201d di toko Anda</strong> \u2014 keduanya akun yang
+      betul-betul berbeda. Kodenya dibuatkan server dan tidak bisa diubah, termasuk oleh Anda,
+      karena kalau kode bisa dipilih sendiri orang lain bisa merebut kode toko Anda.</p>
+    <p class="status">Konsekuensi lain, jujur saja: karena tidak ada email sungguhan, staf yang lupa
+      kata sandinya <strong>tidak bisa memulihkan sendiri</strong> \u2014 Andalah yang menggantinya dari
+      halaman ini. Itu wajar untuk akun staf, dan justru membuat kendalinya tetap di tangan Anda.</p>
+  </div></div>
+
+  <div class="card" style="margin-bottom:18px"><div class="bd">
+    <div class="sh">Peran dan kewenangannya</div>
+    <div class="ss">Susunan awal — bisa Anda ubah di blok <code>PERAN</code> pada berkas aplikasi</div>
+    <div style="height:12px"></div>
+    ${matriks}
+    <p class="status" style="margin-top:12px">Yang ditegakkan database nanti hanyalah
+      <strong>boleh baca</strong> dan <strong>boleh tulis</strong> — selama pembukuan masih disimpan
+      sebagai satu dokumen. Pembedaan yang lebih halus, seperti staf tidak membuka Laba Rugi,
+      masih sebatas tampilan dan baru benar-benar mengunci setelah datanya dipecah per tabel.
+      Jadi jangan beri peran Staf kepada orang yang memang tidak boleh melihat angka laba Anda.</p>
+  </div></div>
+
+  <div class="card" style="margin-bottom:18px"><div class="bd">
+    <div class="sh">Tambah pengguna</div>
+    <div class="ss">Kata sandi awal Anda tentukan sendiri, lalu berikan langsung ke orangnya</div>
+    <p class="gerr" id="pg-err" hidden></p>
+    <div class="grid2" style="margin-top:14px">
+      <div class="field"><label for="pg-nama">Nama orangnya</label>
+        <input type="text" id="pg-nama" placeholder="mis. Andi Pratama"></div>
+      <div class="field"><label for="pg-user">Nama pengguna</label>
+        <input type="text" id="pg-user" placeholder="andi" autocomplete="off">
+        <span style="font-size:11px;color:var(--ink3)">huruf kecil, angka, titik — tanpa spasi</span></div>
+      <div class="field"><label for="pg-sandi">Kata sandi awal</label>
+        <input type="text" id="pg-sandi" placeholder="minimal 8 karakter" autocomplete="off">
+        <span style="font-size:11px;color:var(--ink3)">berikan langsung ke orangnya, minta segera diganti</span></div>
+      <div class="field"><label for="pg-peran">Peran</label>
+        <select id="pg-peran">${peranOpsi}</select></div>
+    </div>
+    <div class="toolbar" style="margin:14px 0 0">
+      <button class="btn primary" id="pg-buat">Buat pengguna</button>
+      <span class="spacer"></span>
+      <span class="status">Batas mengikuti paket · Gratis 2 · Pro 3 · Bisnis 25 orang</span>
+    </div>
+  </div></div>
+
+  ${ANGGOTA_GALAT ? `<div class="warnbox">${esc(ANGGOTA_GALAT)}</div>` : ""}
+  <div class="tablewrap"><table>
+    <thead><tr><th style="width:170px">Nama</th><th style="width:220px">Masuk dengan</th>
+      <th style="width:120px">Peran</th><th style="width:95px">Status</th>
+      <th style="width:105px">Dibuat</th><th style="width:215px"></th></tr></thead>
+    <tbody>${barisAnggota}</tbody>
+  </table></div>
+
+  <div class="card stmt" style="margin-top:18px;max-width:760px"><div class="bd">
+    <div class="sh">Yang harus dikerjakan sebelum ini bisa jalan</div>
+    <table>
+      <tr class="ind"><td>Jalankan <code>supabase-pengguna.sql</code> — tabel anggota, tabel toko &amp; aturan akses</td><td class="amt">perlu Anda jalankan</td></tr>
+      <tr class="ind"><td>Pasang Edge Function <code>kelola-pengguna</code> lewat dashboard Supabase</td><td class="amt">perlu Anda pasang</td></tr>
+      <tr class="ind"><td>Secret <code>DOMAIN_PENGGUNA</code> = <code>${esc(SUBAKUN.domain)}</code> di Edge Function</td><td class="amt">perlu Anda isi</td></tr>
+      <tr class="ind"><td>Kode toko — acak, dibuatkan server, dipakai sebagai pembeda antar toko</td><td class="amt">${KODE_TOKO ? "selesai \u00b7 " + esc(KODE_TOKO) : "otomatis"}</td></tr>
+      <tr class="ind"><td>Sub-akun dinyalakan di aplikasi</td><td class="amt">selesai</td></tr>
+    </table>
+    <p class="status" style="margin-top:10px">Edge Function itu bukan kerumitan yang dibuat-buat:
+      membuat akun orang lain butuh kunci <code>service_role</code>, dan kunci itu melewati seluruh
+      aturan keamanan. Di halaman web ia akan terbaca siapa saja — jadi ia harus tinggal di server.</p>
+  </div></div>`;
+}
+
+/* ============================ paket & langganan ============================
+   KERANGKA — BELUM AKTIF. Selama LANGGANAN.aktif bernilai false, halaman ini
+   hanya memperlihatkan daftar paket beserta harganya, dan TIDAK ada satu pun
+   fitur yang dikunci.
+
+   Susunan harganya bertingkat menurut JUMLAH PESANAN PER BULAN, karena itulah
+   ukuran yang benar-benar menentukan besar kecilnya usaha penjual — sekaligus
+   ukuran yang paling mereka pahami sendiri. Harga per pesanan ikut ditampilkan
+   supaya calon pelanggan bisa membandingkan dengan biaya jasa pembukuan manual,
+   bukan cuma dengan aplikasi sebelah. */
+const LANGGANAN = {
+  aktif: false,                 // ← satu-satunya saklar
+  bulanGratisTahunan: 2,        // bayar 10 bulan untuk 12
+  uji: 14,                      // masa coba gratis, hari
+  kontak: "",                   // diisi nanti: WhatsApp atau email penjualan
+  paket: [
+    { kode:"gratis", nama:"Gratis", harga:0,
+      pitch:"Pembukuan satu toko yang baru mulai — selamanya, tanpa kartu kredit.",
+      pesanan:200, toko:1, pengguna:0, dukungan:"Komunitas" },
+    { kode:"mulai", nama:"Mulai", harga:99000,
+      pitch:"Sudah jalan tiap hari dan ingin laporan yang benar-benar bisa dipakai.",
+      pesanan:5000, toko:2, pengguna:1, dukungan:"Email, 1×24 jam" },
+    { kode:"tumbuh", nama:"Tumbuh", harga:199000, sorot:true,
+      pitch:"Beberapa toko, beberapa marketplace, dan admin yang ikut mengisi.",
+      pesanan:25000, toko:5, pengguna:3, dukungan:"WhatsApp" },
+    { kode:"skala", nama:"Skala", harga:349000,
+      pitch:"Volume besar, tim pembukuan sendiri, tutup buku tiap bulan.",
+      pesanan:100000, toko:0, pengguna:15, dukungan:"WhatsApp prioritas" },
+    { kode:"khusus", nama:"Khusus", harga:null,
+      pitch:"Di atas 100.000 pesanan per bulan, atau butuh penyesuaian sendiri.",
+      pesanan:0, toko:0, pengguna:0, dukungan:"Kanal khusus" },
+  ],
+  /* Baris perbandingan. Nilai: true / false / teks. */
+  banding: [
+    ["Impor Shopee, TikTok Shop & Lazada",      [true, true, true, true, "✓"]],
+    ["Laba Rugi, Neraca, Arus Kas, Neraca Saldo",[true, true, true, true, "✓"]],
+    ["Harga pokok, kartu stok & margin per SKU",[true, true, true, true, "✓"]],
+    ["PPh Final UMKM & PPh 22 otomatis",        [true, true, true, true, "✓"]],
+    ["Bandingkan per bulan, platform & toko",   [false, true, true, true, "✓"]],
+    ["Tutup Buku (cut-off) & jurnal akrual",    [false, true, true, true, "✓"]],
+    ["Rekonsiliasi Fiskal & jadwal penyusutan", [false, true, true, true, "✓"]],
+    ["Unduh laporan PDF",                       [false, true, true, true, "✓"]],
+    ["Resep SKU kombinasi & variasi produk",    [false, false, true, true, "✓"]],
+    ["Harga pokok rata-rata tertimbang",        [false, false, true, true, "✓"]],
+    ["Cadangan otomatis harian",                [false, false, true, true, "✓"]],
+    ["Riwayat pembukuan bertahun-tahun",        [false, false, true, true, "✓"]],
+  ],
+  /* Sengaja diumumkan: lebih baik calon pelanggan tahu batasnya sebelum bayar
+     daripada kecewa sesudahnya — dan ini yang membedakan kita dari yang menjanjikan
+     "otomatis penuh" padahal izin API marketplace tidak semua penjual dapat. */
+  belumAda: [
+    "Sinkronisasi otomatis lewat API marketplace — datanya masih dari file export, diimpor sendiri",
+    "Aplikasi ponsel — jalannya di peramban, tapi tampilannya menyesuaikan layar HP",
+    "Multi mata uang dan penjualan luar negeri",
+  ],
+};
+const hargaTahun = p => p.harga * (12 - LANGGANAN.bulanGratisTahunan);
+const hematPersen = () => Math.round(LANGGANAN.bulanGratisTahunan / 12 * 100);
+const paketSekarang = () => (AKUN && AKUN.paket) || "gratis";
+const defPaket = kode => LANGGANAN.paket.find(p => p.kode === kode) || LANGGANAN.paket[0];
+const bolehLanjutan = () => !LANGGANAN.aktif || defPaket(paketSekarang()).kode !== "gratis";
+
+/* Pemakaian nyata akun ini — dipakai untuk menyarankan paket, bukan hiasan. */
+function pemakaian(){
+  const per = {};                                  // bulan → jumlah pesanan unik
+  for (const x of S.order){
+    const b = String(x.tgl || "").slice(0,7); if (!b) continue;
+    (per[b] ||= new Set());
+    const k = normNo(x.no);
+    per[b].add(k && !k.includes(" ") ? k : ("baris:" + Math.random()));
+  }
+  const bulan = Object.keys(per).sort();
+  const jml = bulan.map(b => per[b].size);
+  const tiga = jml.slice(-3);
+  return {
+    bulan, perBulan: Object.fromEntries(bulan.map((b,i) => [b, jml[i]])),
+    puncak: jml.length ? Math.max(...jml) : 0,
+    rata: tiga.length ? Math.round(tiga.reduce((a,c) => a+c, 0) / tiga.length) : 0,
+    toko: Math.max(daftarToko().length, 1),
+    platform: daftarPlatform().length,
+  };
+}
+/* Paket terkecil yang masih memuat pemakaian tertinggi Anda. */
+function paketDisarankan(P){
+  const butuh = Math.max(P.puncak, P.rata);
+  const cocok = LANGGANAN.paket.find(p => p.harga !== null && p.pesanan &&
+    p.pesanan >= butuh && (!p.toko || p.toko >= P.toko));
+  return cocok || LANGGANAN.paket[LANGGANAN.paket.length - 1];
+}
+
+function viewPaket(){
+  const u = S.ui || (S.ui = {});
+  const tahunan = u.paketTahunan === true;
+  const kini = paketSekarang();
+  const P = pemakaian();
+  const saran = paketDisarankan(P);
+  const butuh = Math.max(P.puncak, P.rata);
+
+  const kartu = LANGGANAN.paket.map(p => {
+    const ini = p.kode === kini, disaran = p.kode === saran.kode;
+    const per = tahunan && p.harga ? hargaTahun(p) : p.harga;
+    const harga = p.harga === null ? `<span style="font-size:20px">Hubungi kami</span>`
+      : p.harga === 0 ? "Gratis"
+      : "Rp " + RE_ID.format(tahunan ? Math.round(per/12) : per) +
+        `<span class="satuan">/bulan</span>`;
+    const perPesanan = p.harga && p.pesanan
+      ? "Rp " + ((tahunan ? hargaTahun(p)/12 : p.harga) / p.pesanan).toFixed(2).replace(".", ",") + " per pesanan"
+      : "";
+    return `<div class="pkt${p.sorot ? " sorot" : ""}${ini ? " kini" : ""}${disaran ? " saran" : ""}">
+      ${disaran ? `<span class="pita saranp">Pas untuk Anda</span>`
+        : p.sorot ? `<span class="pita">Paling banyak dipilih</span>` : ""}
+      <div class="pkt-kepala"><h3>${esc(p.nama)}</h3>
+        ${ini ? `<span class="chip ok" style="font-size:10.5px">Paket Anda</span>` : ""}</div>
+      <div class="pkt-kuota">${p.harga === null ? "Di atas 100.000 pesanan/bulan"
+        : "Sampai " + RE_ID.format(p.pesanan) + " pesanan/bulan"}</div>
+      <div class="pkt-harga">${harga}</div>
+      <div class="pkt-hemat">${
+        p.harga === null ? "disesuaikan dengan kebutuhan"
+        : p.harga === 0 ? "selamanya, tanpa kartu kredit"
+        : tahunan ? "Rp " + RE_ID.format(hargaTahun(p)) + " ditagih setahun · " + perPesanan
+        : perPesanan}</div>
+      <p class="pkt-pitch">${esc(p.pitch)}</p>
+      <ul class="pkt-fitur">
+        <li>${p.toko ? p.toko + " toko" : "Toko tanpa batas"}${p.harga === 0 ? ", 1 marketplace" : ", semua marketplace"}</li>
+        <li>${p.pengguna ? p.pengguna + " pengguna tambahan" : (p.harga === null ? "Pengguna sesuai kebutuhan" : "Tanpa pengguna tambahan")}</li>
+        <li>Dukungan ${esc(p.dukungan)}</li>
+      </ul>
+      <button class="btn${p.sorot || disaran ? " primary" : ""}" disabled>
+        ${p.harga === null ? "Hubungi kami" : p.harga === 0 ? "Paket dasar" : "Segera hadir"}</button>
+    </div>`;
+  }).join("");
+
+  const kol = LANGGANAN.paket;
+  const sel = v => v === true ? `<span style="color:var(--accent);font-weight:700">✓</span>`
+    : v === false ? `<span style="color:var(--ink3)">—</span>` : esc(String(v));
+  const tabel = `<div class="tablewrap"><table class="mx">
+    <thead><tr><th class="lbl2">Yang Anda dapat</th>
+      ${kol.map(p => `<th class="r" style="width:92px">${esc(p.nama)}</th>`).join("")}</tr></thead>
+    <tbody>
+      ${LANGGANAN.banding.map(([judul, nilai]) => `<tr>
+        <td class="lbl2">${esc(judul)}</td>
+        ${nilai.map(v => `<td class="calc">${sel(v)}</td>`).join("")}</tr>`).join("")}
+      <tr class="tot"><td class="lbl2">Pesanan per bulan</td>
+        ${kol.map(p => `<td class="calc">${p.pesanan ? RE_ID.format(p.pesanan) : "∞"}</td>`).join("")}</tr>
+      <tr class="tot"><td class="lbl2">Toko</td>
+        ${kol.map(p => `<td class="calc">${p.toko || "∞"}</td>`).join("")}</tr>
+      <tr class="tot"><td class="lbl2">Pengguna tambahan</td>
+        ${kol.map(p => `<td class="calc">${p.harga === null ? "∞" : p.pengguna}</td>`).join("")}</tr>
+    </tbody></table></div>`;
+
+  const grafik = (() => {
+    const b = P.bulan.slice(-12);
+    if (!b.length) return "";
+    const maks = Math.max(...b.map(x => P.perBulan[x]), saran.pesanan || 1);
+    return `<div class="pmk-grafik">${b.map(x => {
+      const n = P.perBulan[x];
+      return `<div class="pmk-bar" title="${esc(labelBulan(x + "-01"))}: ${RE_ID.format(n)} pesanan">
+        <div class="pmk-isi" style="height:${Math.max(3, n / maks * 100)}%"></div>
+        <span>${esc(BLN3[+x.slice(5,7) - 1])}</span></div>`;
+    }).join("")}</div>`;
+  })();
+
+  return head("Paket & Langganan",
+    "Harga bertingkat menurut jumlah pesanan per bulan. Belum berjalan — tidak ada fitur yang dikunci dan tidak ada yang perlu dibayar.") +
+  `<div class="warnbox"><strong>Halaman ini masih rancangan.</strong>
+     Pembayaran belum tersambung, seluruh akun memakai aplikasi selengkapnya.</div>
+
+  <div class="card" style="margin-bottom:20px"><div class="bd">
+    <div class="sh">Pemakaian Anda menentukan paketnya</div>
+    <div class="ss">Dihitung dari data pesanan Anda sendiri, bukan perkiraan</div>
+    <div class="pmk">
+      <div class="pmk-angka">
+        <div><span class="k">Rata-rata 3 bulan terakhir</span><span class="v">${RE_ID.format(P.rata)}</span><span class="m">pesanan/bulan</span></div>
+        <div><span class="k">Bulan tertinggi</span><span class="v">${RE_ID.format(P.puncak)}</span><span class="m">pesanan</span></div>
+        <div><span class="k">Toko &amp; marketplace</span><span class="v">${P.toko} · ${P.platform}</span><span class="m">toko · marketplace</span></div>
+      </div>
+      ${grafik}
+    </div>
+    <div class="pmk-saran">${butuh
+      ? `Paket <strong>${esc(saran.nama)}</strong> memuat pemakaian tertinggi Anda
+         (${RE_ID.format(butuh)} pesanan)${saran.harga ? ` — setara
+         <strong>Rp ${(saran.harga / Math.max(butuh,1)).toFixed(0)}</strong> per pesanan yang Anda bukukan` : ""}.`
+      : `Belum ada data pesanan. Impor satu bulan dulu, lalu halaman ini akan menyarankan paket yang pas.`}</div>
+  </div></div>
+
+  <div class="toolbar">
+    <div class="field" style="max-width:250px"><label>Tampilkan harga</label>
+      <select id="pkt-siklus">
+        <option value="bulan"${!tahunan ? " selected" : ""}>Bayar bulanan</option>
+        <option value="tahun"${tahunan ? " selected" : ""}>Bayar tahunan — hemat ${hematPersen()}%</option>
+      </select></div>
+    <span class="spacer"></span>
+    <span class="status">Coba ${LANGGANAN.uji} hari tanpa biaya · batal kapan saja · data tetap milik Anda</span>
+  </div>
+  <div class="pkt-baris lima">${kartu}</div>
+
+  <div class="card" style="margin-top:22px"><div class="bd">
+    <div class="sh">Perbandingan lengkap</div>
+    <div class="ss">Semua paket memakai mesin pembukuan yang sama — yang berbeda kapasitas dan laporan lanjutannya</div>
+    <div style="height:12px"></div>
+    ${tabel}
+  </div></div>
+
+  <div class="card" style="margin-top:18px;max-width:820px"><div class="bd">
+    <div class="sh">Yang belum ada di paket mana pun</div>
+    <div class="ss">Lebih baik Anda tahu sebelum membayar</div>
+    <ul class="pkt-fitur belum" style="margin-top:12px">
+      ${LANGGANAN.belumAda.map(x => `<li>${esc(x)}</li>`).join("")}
+    </ul>
+    <p class="status" style="margin-top:12px">Soal sinkronisasi otomatis: menyambung langsung ke API
+      marketplace terdengar enak, tapi izinnya tidak dibuka untuk semua penjual dan bisa dicabut
+      sewaktu-waktu oleh platform. Impor berkas export berjalan untuk siapa pun, hari ini juga,
+      tanpa menunggu persetujuan siapa-siapa.</p>
+  </div></div>
+
+  <div class="card stmt" style="margin-top:18px;max-width:820px"><div class="bd">
+    <div class="sh">Yang masih harus dikerjakan sebelum ini bisa jalan</div>
+    <table>
+      <tr class="sec"><td colspan="2">Di sisi Anda</td></tr>
+      <tr class="ind"><td>Cara menerima pembayaran — transfer manual, QRIS, atau payment gateway</td><td class="amt">belum</td></tr>
+      <tr class="ind"><td>Badan usaha &amp; NPWP bila memakai payment gateway</td><td class="amt">belum</td></tr>
+      <tr class="ind"><td>Syarat &amp; ketentuan dan kebijakan privasi</td><td class="amt">belum</td></tr>
+      <tr class="sec"><td colspan="2">Di sisi aplikasi</td></tr>
+      <tr class="ind"><td>Tabel <code>langganan</code> di Supabase</td><td class="amt">berkas SQL siap</td></tr>
+      <tr class="ind"><td>Pengecekan status langganan saat masuk</td><td class="amt">kerangka siap</td></tr>
+      <tr class="ind"><td>Penguncian fitur bila paket habis masa berlakunya</td><td class="amt">belum dinyalakan</td></tr>
+    </table>
+    <p class="status" style="margin-top:10px">Angka-angka di atas gampang diubah: semuanya ada di satu
+      blok <code>LANGGANAN</code> pada berkas aplikasi — nama paket, harga, kuota, sampai isi tabel
+      perbandingannya.</p>
+  </div></div>`;
+}
+
 function viewSetup(){
   const s = S.setup;
   return head("Pengaturan", "Periode di sini menentukan transaksi mana yang masuk ke seluruh laporan.") +
@@ -4756,6 +5578,57 @@ document.addEventListener("click", async e => {
   }
   const nav = t.closest("[data-nav]");
   if (nav){ page = nav.dataset.nav; render(); return; }
+  if (t.id === "pg-buat"){
+    const err = document.getElementById("pg-err");
+    const kabar = (teks, baik) => { if (!err) return; err.textContent = teks || ""; err.hidden = !teks;
+      err.className = "gerr" + (baik ? " ok" : ""); };
+    kabar("");
+    const nama = (document.getElementById("pg-nama") || {}).value || "";
+    const username = ((document.getElementById("pg-user") || {}).value || "").trim().toLowerCase();
+    const sandi = (document.getElementById("pg-sandi") || {}).value || "";
+    const peran = (document.getElementById("pg-peran") || {}).value || "staf";
+    if (!/^[a-z0-9._-]{3,24}$/.test(username)){
+      kabar("Nama pengguna 3–24 karakter: huruf kecil, angka, titik, garis. Tanpa spasi."); return; }
+    if (sandi.length < 8){ kabar("Kata sandi awal minimal 8 karakter."); return; }
+    const b = t; b.disabled = true; b.textContent = "Membuat…";
+    try {
+      const j = await panggilFungsi("buat", { nama, username, sandi, peran });
+      if (j && j.kode) KODE_TOKO = j.kode;
+      await muatAnggota(false);
+      render();
+      setTimeout(() => pesan("Pengguna " + username + " dibuat.\n\n" +
+        "Dia masuk lewat halaman yang sama dengan Anda:\n" +
+        "· Nama pengguna: " + username + "\n· Kata sandi: " + sandi + "\n\n" +
+        "Sampaikan langsung ke orangnya, dan minta segera diganti."), 60);
+    } catch(e){ kabar(String(e.message || e)); }
+    finally { b.disabled = false; b.textContent = "Buat pengguna"; }
+    return;
+  }
+  const pgs = t.closest("[data-pgsandi]");
+  if (pgs){
+    const a = (ANGGOTA || []).find(x => x.anggota_id === pgs.dataset.pgsandi);
+    const baru = await kotakIsi("Kata sandi baru untuk " + ((a && a.username) || "pengguna ini"),
+      "Ketik kata sandi barunya, minimal 8 karakter. Catat dulu — setelah ini tidak bisa dilihat lagi.");
+    if (baru === null) return;
+    if (String(baru).length < 8){ pesan("Kata sandi minimal 8 karakter."); return; }
+    try { await panggilFungsi("sandi", { anggota_id: pgs.dataset.pgsandi, sandi: baru });
+      pesan("Kata sandi " + ((a && a.username) || "pengguna") + " diganti."); }
+    catch(e){ pesan(String(e.message || e), "Gagal mengganti kata sandi"); }
+    return;
+  }
+  const pgt = t.closest("[data-pgtoggle]");
+  if (pgt){
+    const hidup = pgt.dataset.hidup === "1";
+    const a = (ANGGOTA || []).find(x => x.anggota_id === pgt.dataset.pgtoggle);
+    const nm = (a && (a.nama || a.username)) || "pengguna ini";
+    if (!hidup && !await konfirmasi("Nonaktifkan " + nm + "? Dia langsung keluar dari aplikasi dan " +
+        "tidak bisa masuk lagi sampai Anda aktifkan kembali. Data yang sudah dia input tetap ada.",
+        "Nonaktifkan pengguna", "Nonaktifkan")) return;
+    try { await panggilFungsi(hidup ? "aktifkan" : "nonaktif", { anggota_id: pgt.dataset.pgtoggle });
+      await muatAnggota(false); render(); }
+    catch(e){ pesan(String(e.message || e), "Gagal"); }
+    return;
+  }
   if (t.id === "btn-keluar"){ await keluar(); return; }
   if (t.id === "btn-theme"){
     const cur = document.documentElement.getAttribute("data-theme");
@@ -4821,6 +5694,41 @@ document.addEventListener("click", async e => {
     if (!await konfirmasi(`Hapus resep ${g.induk || "(tanpa SKU)"} beserta ${g.baris.length} komponennya?`, "Hapus resep", "Hapus")) return;
     S.resep = S.resep.filter(x => normKode(x.induk) !== g.key);
     touch(); return;
+  }
+  if (t.id === "manual-mentah"){ mentahManual = !mentahManual; render(); return; }
+  if (t.id === "manual-baru"){
+    const hariIni = (S.setup.akhir < new Date().toISOString().slice(0,10)
+      ? S.setup.akhir : new Date().toISOString().slice(0,10));
+    (S.manual ||= []).push({ tgl: hariIni, no: nomorInvoiceBaru(hariIni), pelanggan: "",
+      sku: "", nama: "", qty: 1, harga: 0, diskon: 0, bayar: "Kas",
+      plat: platAktif() || "shopee", toko: tokoAktif() || "" });
+    touch(); return;
+  }
+  const madd = t.closest("[data-madd]");
+  if (madd){
+    const g = grupInvoice()[+madd.dataset.madd]; if (!g) return;
+    S.manual.push({ tgl:g.tgl, no:g.no, pelanggan:g.pelanggan, sku:"", nama:"", qty:1, harga:0,
+      diskon:0, bayar:g.bayar, plat:g.plat, toko:g.toko });
+    touch(); return;
+  }
+  const mdel = t.closest("[data-mdel]");
+  if (mdel){ S.manual.splice(+mdel.dataset.mdel, 1); touch(); return; }
+  const mdi = t.closest("[data-mdelinv]");
+  if (mdi){
+    const g = grupInvoice()[+mdi.dataset.mdelinv]; if (!g) return;
+    if (!await konfirmasi(`Hapus invoice ${g.no || "(tanpa nomor)"} beserta ${g.baris.length} barisnya?`,
+      "Hapus invoice", "Hapus")) return;
+    const buang = new Set(g.baris.map(b => b.i));
+    S.manual = S.manual.filter((_, i) => !buang.has(i));
+    touch(); return;
+  }
+  const mpdf = t.closest("[data-mpdf]");
+  if (mpdf){
+    const b = mpdf, lbl = b.textContent; b.disabled = true; b.textContent = "Menyusun…";
+    try { await unduhInvoice(+mpdf.dataset.mpdf); }
+    catch(e){ pesan("Gagal membuat invoice: " + (e && e.message ? e.message : e)); }
+    finally { b.disabled = false; b.textContent = lbl; }
+    return;
   }
   if (t.id === "beli-baru"){
     const hariIni = (S.setup.akhir < new Date().toISOString().slice(0,10) ? S.setup.akhir : new Date().toISOString().slice(0,10));
@@ -4976,6 +5884,18 @@ document.addEventListener("change", e => {
     S[k][+i][f] = t.classList.contains("num") ? num(t.value) : t.value;
     touch(); return;
   }
+  if (t.dataset.ml){
+    const [i, f] = t.dataset.ml.split(":");
+    const r = S.manual[+i]; if (!r) return;
+    r[f] = (f === "qty" || f === "harga" || f === "diskon") ? num(t.value) : t.value.trim();
+    touch(); return;
+  }
+  if (t.dataset.mg){
+    const [gi, f] = t.dataset.mg.split(":");
+    const g = grupInvoice()[+gi]; if (!g) return;
+    for (const b of g.baris) b.x[f] = t.value;
+    touch(); return;
+  }
   if (t.dataset.bl){
     const [i, f] = t.dataset.bl.split(":");
     const r = S.beli[+i]; if (!r) return;
@@ -5027,6 +5947,7 @@ document.addEventListener("change", e => {
     p.kode = t.value.trim();
     touch(); return;
   }
+  if (t.id === "pkt-siklus"){ (S.ui ||= {}).paketTahunan = t.value === "tahun"; touch(); return; }
   if (t.id === "ak-metode"){ (S.ui ||= {}).akMetode = t.value; touch(); return; }
   if (t.id === "lr-banding"){ (S.ui ||= {}).banding = t.value === "0" ? false : t.value; touch(); return; }
   if (t.id === "lr-mode"){ lrState().mode = t.value; touch(); return; }
