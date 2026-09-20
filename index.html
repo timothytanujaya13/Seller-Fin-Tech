@@ -7189,6 +7189,13 @@ async function doImport(rows){
   const platImp = IMP.plat || "shopee";
   const tokoImp = ((document.getElementById("imp-toko") || {}).value || "").trim();
   let out = []; let skipped = 0;
+  /* Baris yang tidak jadi masuk dicatat beserta ALASANNYA, lalu bisa diunduh.
+     Angka "sekian baris dilewati" tanpa alasan cuma bikin cemas — yang dibutuhkan
+     penjual adalah bukti bahwa yang dilewati memang bukan transaksi. */
+  const alasan = { total:0, tanggal:0, kosong:0 };
+  const terlewat = [];
+  const catat = (row, sebab) => { alasan[sebab]++; skipped++;
+    if (terlewat.length < 20000) terlewat.push({ sebab, row }); };
   for (const row of rows){
     const rec = Object.assign({}, T.def || {});
     let ok = false;
@@ -7203,11 +7210,11 @@ async function doImport(rows){
     }
     if (perUnit) { rec.qty = 1; ok = ok || !!rec.sku; }
     /* baris "Total …" di kaki sheet Shopee bukan transaksi */
-    if (/^total\b/i.test(String(rec.ket || rec.supplier || "").trim())){ skipped++; continue; }
-    if (punyaTanggal(key) && !rec.tgl){ skipped++; continue; }
+    if (/^total\b/i.test(String(rec.ket || rec.supplier || "").trim())){ catat(row, "total"); continue; }
+    if (punyaTanggal(key) && !rec.tgl){ catat(row, "tanggal"); continue; }
     if (key === "produk" || key === "hpp") ok = !!rec.sku;
     if (key === "resep") ok = !!(String(rec.induk || "").trim() && String(rec.sku || "").trim() && num(rec.qty) > 0);
-    if (ok) out.push(rec); else skipped++;
+    if (ok) out.push(rec); else catat(row, "kosong");
   }
   if (!out.length){
     pesan("Tidak ada baris yang bisa dibaca dari file ini.\n\n" +
@@ -7321,13 +7328,47 @@ async function doImport(rows){
         note("Arsip detail tidak terunduh — datanya sudah masuk"); })
       .catch(() => {});
   }
-  setTimeout(() => pesan(
-    (ringkas ? detail + " baris diringkas menjadi " + out.length + " baris." : out.length + " baris berhasil diimpor.") +
-    (diganti ? "\n" + diganti + " baris lama pada periode yang sama diganti." : "") +
-    (lintasBulan ? "\n" + lintasBulan + " pesanan di file ini dibuat pada bulan sebelumnya — dicatat untuk halaman Tutup Buku." : "") +
-    (perUnit ? "\nSetiap baris dihitung 1 unit." : "") +
-    (added ? "\n" + added + " SKU baru ditambahkan ke Master Produk — isi Harga Modal-nya agar HPP terhitung." : "") +
-    (skipped ? "\n" + skipped + " baris dilewati karena tanggalnya kosong atau tidak terbaca." : "")), 60);
+  const rincianLewat = !skipped ? "" :
+    "\n\n" + skipped + " dari " + (detail + skipped) + " baris file tidak ikut masuk:" +
+    (alasan.total    ? "\n  \u2022 " + alasan.total    + " baris \u201cTotal \u2026\u201d di kaki sheet \u2014 memang bukan transaksi." : "") +
+    (alasan.tanggal  ? "\n  \u2022 " + alasan.tanggal  + " baris tanpa tanggal yang terbaca." : "") +
+    (alasan.kosong   ? "\n  \u2022 " + alasan.kosong   + " baris tanpa satu pun kolom terisi \u2014 biasanya baris kosong atau judul berulang." : "");
+
+  setTimeout(async () => {
+    const teks =
+      (ringkas ? detail + " baris diringkas menjadi " + out.length + " baris." : out.length + " baris berhasil diimpor.") +
+      (diganti ? "\n" + diganti + " baris lama pada periode yang sama diganti." : "") +
+      (lintasBulan ? "\n" + lintasBulan + " pesanan di file ini dibuat pada bulan sebelumnya — dicatat untuk halaman Tutup Buku." : "") +
+      (perUnit ? "\nSetiap baris dihitung 1 unit." : "") +
+      (added ? "\n" + added + " SKU baru ditambahkan ke Master Produk — isi Harga Modal-nya agar HPP terhitung." : "") +
+      rincianLewat +
+      (skipped ? "\n\nUnduh daftarnya untuk memeriksa sendiri \u2014 kalau ternyata ada transaksi sungguhan di situ, kolom tanggalnya yang perlu dicocokkan ulang." : "");
+    const tombol = skipped
+      ? [{ label:"Unduh baris terlewat", gaya:"ghost", nilai:"unduh" }, { label:"Tutup", gaya:"primary", nilai:true }]
+      : [{ label:"Tutup", gaya:"primary", nilai:true }];
+    if (await kotak("Selesai", teks, tombol) === "unduh"){
+      const ok = await unduhTerlewat(key, terlewat);
+      note(ok ? "Daftar baris terlewat terunduh" : "Unduhan gagal \u2014 coba lagi dari peramban");
+    }
+  }, 60);
+}
+
+/* Baris yang dilewati diunduh APA ADANYA dari file aslinya, ditambah satu kolom
+   alasan di depan. Sengaja mentah: yang ingin dipastikan penjual adalah isi baris
+   itu di file Shopee/Lazada-nya, bukan tafsiran aplikasi atasnya. */
+async function unduhTerlewat(key, terlewat){
+  if (!terlewat || !terlewat.length) return false;
+  const SEBAB = { total:"baris Total di kaki sheet", tanggal:"tanggal kosong / tak terbaca",
+                  kosong:"tidak ada kolom terisi" };
+  const judul = (IMP.labels || []).map(l => l.name);
+  const sel = v => String(v ?? "").replace(/[;\r\n]+/g, " ").trim();
+  const head = ["Alasan dilewati"].concat(judul.map(sel)).join(";");
+  const body = terlewat.map(t =>
+    [SEBAB[t.sebab] || t.sebab].concat(judul.map((_, i) => sel(t.row[i]))).join(";")).join("\n");
+  const dl = await use("downloads");
+  const nama = `baris-terlewat-${key}-${new Date().toISOString().slice(0,10)}.csv`;
+  if (dl){ try { await dl.save({ filename: nama, data: "\ufeff" + head + "\n" + body }); return true; } catch(e){} }
+  return false;
 }
 
 /* ---------- unduh isi tabel sebagai CSV ---------- */
