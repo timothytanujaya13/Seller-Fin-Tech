@@ -717,16 +717,37 @@ function modalBaris(x, V, M, RES){
   return num((M || petaModal())[x.sku] || 0);
 }
 
+/* Dulu ini memindai seluruh Master Produk untuk SETIAP baris pesanan. Dengan
+   1.600 produk dan 13.600 pesanan itu 20 juta perbandingan tiap kali layar
+   digambar. Sekarang petanya dibangun sekali per gambar-ulang (lihat segarkanPeta). */
+let PETA_KODE = null, PUNYA_SKU_SET = null, SIMPANAN = {};
+function segarkanPeta(){ PETA_KODE = null; PUNYA_SKU_SET = null; SIMPANAN = {}; }
+/* Peta varian, resep, dan harga modal dibangun ulang tiap kali dipanggil — dan
+   kolom "Total HPP" memanggilnya sekali per baris. Dengan 13.600 baris itu berarti
+   13.600 kali membangun peta yang isinya sama persis. Simpanan ini membuatnya
+   dibangun sekali saja, lalu dibuang tiap layar digambar ulang supaya tidak
+   pernah ada angka basi. */
+const simpan1 = (nama, fn) => () => (nama in SIMPANAN ? SIMPANAN[nama] : (SIMPANAN[nama] = fn()));
 const kodeBarang = sku => {
-  const p = S.produk.find(x => String(x.sku) === String(sku));
-  const k = p && String(p.kode || "").trim();
-  return k || String(sku ?? "");
+  if (!PETA_KODE){
+    PETA_KODE = new Map();
+    for (const p of S.produk){
+      const k = String(p.kode || "").trim();
+      if (k) PETA_KODE.set(String(p.sku), k);
+    }
+  }
+  return PETA_KODE.get(String(sku)) || String(sku ?? "");
+};
+const punyaSku = sku => {
+  if (!PUNYA_SKU_SET) PUNYA_SKU_SET = new Set(S.produk.map(p => String(p.sku)));
+  return PUNYA_SKU_SET.has(String(sku));
 };
 /* ---- lapis variasi ----
    ID Produk Shopee (Item ID) menampung banyak Model ID. Kalau data pesanan membawa
    Model ID atau SKU variasi, identitas dan harga modalnya diambil dari situ; kalau tidak,
    jatuh ke tingkat produk. */
-function petaVarian(){
+const petaVarian = simpan1('varian', petaVarian_);
+function petaVarian_(){
   const byModel = new Map(), byKode = new Map(), byProduk = new Map();
   for (const v of (S.varian || [])){
     const m = String(v.model || "").trim(), k = String(v.kode || "").trim(), sk = String(v.sku || "").trim();
@@ -743,7 +764,8 @@ const varianDari = (x, V) => {
 };
 
 /* Harga modal boleh diisi di salah satu toko saja — yang lain ikut lewat Kode Barang. */
-function petaModal(){
+const petaModal = simpan1('modal', petaModal_);
+function petaModal_(){
   const langsung = {}, lewatKode = {};
   for (const p of S.produk){
     const m = num(p.modal);
@@ -788,14 +810,16 @@ const pesananBatal = x => BATAL.test(norm(x.status || ""));
    Omzet tetap tercatat di SKU kombinasi (itulah yang benar-benar dijual dan itulah harga
    yang benar), sedangkan kartu stok dan harga pokoknya diambil dari komponennya. */
 const normKode = v => String(v ?? "").trim().toUpperCase();
-function petaModalKode(){
+const petaModalKode = simpan1('modalKode', petaModalKode_);
+function petaModalKode_(){
   const MOD = petaModal(), out = new Map();
   const isi = (k, m) => { const kk = normKode(k); if (kk && m && !out.has(kk)) out.set(kk, m); };
   for (const v of (S.varian || [])){ isi(v.kode, num(v.modal)); isi(v.model, num(v.modal)); }
   for (const p of S.produk){ const m = num(MOD[String(p.sku)]); isi(p.kode, m); isi(p.sku, m); }
   return out;
 }
-function petaResep(){
+const petaResep = simpan1('resep', petaResep_);
+function petaResep_(){
   const M = new Map();
   for (const r of (S.resep || [])){
     const ind = normKode(r.induk), kom = String(r.sku || "").trim(), q = num(r.qty);
@@ -1130,6 +1154,7 @@ function hitungPenyusutan(m, a){
 
 /* ============================ mesin akuntansi ============================ */
 function compute(m, a){
+  segarkanPeta();
   const batasMulai = m || S.setup.mulai, batasAkhir = a || S.setup.akhir;
   const inPeriod = d => d && d >= batasMulai && d <= batasAkhir;
   const pakai = x => inPeriod(x.tgl) && inToko(x);
@@ -1879,6 +1904,7 @@ async function boot(){
 }
 
 function save(){
+  segarkanPeta();
   if (!AKUN) return;
   S.ts = Date.now();
   let lokalOK = true;
@@ -2199,6 +2225,7 @@ function renderNav(){
 
 /* ============================ render ============================ */
 function render(){
+  segarkanPeta();
   if (!bolehHalaman(page)) page = halamanPertama();
   const R = compute();
   document.getElementById("tb-store").textContent = S.setup.nama || "Toko Saya";
@@ -2413,7 +2440,10 @@ function viewTable(key){
   </div>
   ${body ? `<div class="tablewrap"><table><thead><tr>${head}<th></th></tr></thead><tbody>${body}</tbody>
     <tfoot><tr>${totals}<td></td></tr></tfoot></table></div>`
-   : `<div class="tablewrap"><div class="empty">Belum ada data. Tambahkan baris baru, atau unggah file export dari Shopee, TikTok Shop, atau Lazada — platform dan kolomnya dikenali otomatis.</div></div>`}`;
+   : `<div class="tablewrap"><div class="empty">Belum ada data. Tambahkan baris baru, atau unggah file export dari Shopee, TikTok Shop, atau Lazada — platform dan kolomnya dikenali otomatis.</div></div>`}
+  ${T.cols.some(c => c.t === "sku") ? `<datalist id="dl-sku-tabel">${
+      S.produk.slice(0, 4000).map(p => `<option value="${esc(p.sku)}">${
+        esc([p.kode, p.nama].filter(Boolean).join(" \u00b7 ").slice(0, 70))}</option>`).join("")}</datalist>` : ""}`;
 }
 function cell(key, i, r, c){
   const id = `data-cell="${key}:${i}:${c.k}"`;
@@ -2426,10 +2456,15 @@ function cell(key, i, r, c){
   if (c.t === "n") return `<td><input class="num n" ${id} value="${r[c.k] ? RE_ID.format(num(r[c.k])) : ""}" inputmode="numeric"></td>`;
   if (c.t === "sel") return `<td><select ${id}>${c.opts.map(o => `<option${r[c.k]===o?" selected":""}>${esc(o)}</option>`).join("")}</select></td>`;
   if (c.t === "akun") return `<td><select ${id}>${c.opts.map(o => `<option value="${o}"${r[c.k]===o?" selected":""}>${o} · ${esc(NAMA[o])}</option>`).join("")}</select></td>`;
+  /* Dulu tiap baris membawa <select> berisi SELURUH Master Produk. Dua ratus baris
+     dikali 1.600 produk = 320.000 unsur yang harus dibuat peramban tiap kali tabel
+     dibuka — itulah sumber macetnya. Sekarang satu <datalist> dipakai bersama:
+     cara mengetiknya sama, sarannya tetap muncul, unsurnya tinggal 1.600. */
   if (c.t === "sku"){
-    const opts = S.produk.map(p => `<option value="${esc(p.sku)}"${r[c.k]===p.sku?" selected":""}>${esc(p.sku)}${p.kode?" · "+esc(p.kode):""}</option>`).join("");
-    const unknown = r[c.k] && !S.produk.some(p => p.sku === r[c.k]);
-    return `<td><select ${id}><option value="">—</option>${opts}${unknown?`<option value="${esc(r[c.k])}" selected>${esc(r[c.k])} (tidak ada di Master Produk)</option>`:""}</select></td>`;
+    const v = r[c.k] || "";
+    const asing = v && !punyaSku(v);
+    return `<td><input type="text" list="dl-sku-tabel" ${id} value="${esc(v)}"` +
+      (asing ? ` style="color:var(--warn)" title="SKU ini belum ada di Master Produk"` : "") + `></td>`;
   }
   return `<td><input type="text" ${id} value="${esc(r[c.k]||"")}"></td>`;
 }
@@ -5636,7 +5671,7 @@ document.addEventListener("click", async e => {
     const next = cur ? (cur === "dark" ? "light" : "dark") : (sysDark ? "light" : "dark");
     document.documentElement.setAttribute("data-theme", next);
     try { localStorage.setItem("bbl:theme", next); } catch(err){}
-    if (page === "ringkasan") drawCharts(compute());
+    if (page === "ringkasan") render();   // sekalian, jangan hitung buku dua kali
     return;
   }
   const add = t.closest("[data-add]");
