@@ -7324,8 +7324,24 @@ async function doImport(rows){
      penjual adalah bukti bahwa yang dilewati memang bukan transaksi. */
   const alasan = { total:0, tanggal:0, kosong:0 };
   const terlewat = [];
-  const catat = (row, sebab) => { alasan[sebab]++; skipped++;
-    if (terlewat.length < 20000) terlewat.push({ sebab, row }); };
+  /* Angka telanjang “13.484 baris dilewati” membuat orang cemas tanpa tahu apa
+     yang harus dikhawatirkan. Yang sebenarnya ingin diketahui penjual: itu uang
+     saya atau bukan? Jadi baris yang dilewati karena tak bertanggal ditelusuri
+     status dan nilainya — pesanan batal dipisahkan dari pesanan yang cuma belum
+     selesai, karena yang satu tidak akan pernah jadi uang dan yang satunya akan. */
+  const L = { batal:0, nBatal:0, belum:0, nBelum:0, tanpaStatus:0 };
+  const statusLewat = new Map();
+  const catat = (row, sebab, rec) => {
+    alasan[sebab]++; skipped++;
+    if (terlewat.length < 20000) terlewat.push({ sebab, row });
+    if (sebab !== "tanggal" || !rec) return;
+    const st = String(rec.status || "").trim();
+    if (!st){ L.tanpaStatus++; return; }
+    statusLewat.set(st, (statusLewat.get(st) || 0) + 1);
+    const nilai = num(rec.qty) * num(rec.harga);
+    if (BATAL.test(norm(st))){ L.batal++; L.nBatal += nilai; }
+    else { L.belum++; L.nBelum += nilai; }
+  };
   for (const row of rows){
     const rec = Object.assign({}, T.def || {});
     let ok = false;
@@ -7340,11 +7356,11 @@ async function doImport(rows){
     }
     if (perUnit) { rec.qty = 1; ok = ok || !!rec.sku; }
     /* baris "Total …" di kaki sheet Shopee bukan transaksi */
-    if (/^total\b/i.test(String(rec.ket || rec.supplier || "").trim())){ catat(row, "total"); continue; }
-    if (punyaTanggal(key) && !rec.tgl){ catat(row, "tanggal"); continue; }
+    if (/^total\b/i.test(String(rec.ket || rec.supplier || "").trim())){ catat(row, "total", rec); continue; }
+    if (punyaTanggal(key) && !rec.tgl){ catat(row, "tanggal", rec); continue; }
     if (key === "produk" || key === "hpp") ok = !!rec.sku;
     if (key === "resep") ok = !!(String(rec.induk || "").trim() && String(rec.sku || "").trim() && num(rec.qty) > 0);
-    if (ok) out.push(rec); else catat(row, "kosong");
+    if (ok) out.push(rec); else catat(row, "kosong", rec);
   }
   if (!out.length){
     pesan("Tidak ada baris yang bisa dibaca dari file ini.\n\n" +
@@ -7458,11 +7474,35 @@ async function doImport(rows){
         note("Arsip detail tidak terunduh — datanya sudah masuk"); })
       .catch(() => {});
   }
+  /* Tiga status teratas disebut apa adanya, supaya penjual bisa mencocokkannya
+     sendiri dengan Seller Centre alih-alih percaya begitu saja.
+     Catatan tampilan: kotak dialog memakai white-space:pre-line, yang membuang
+     spasi di awal baris \u2014 jadi jangan pakai indentasi, dan jangan memotong
+     kalimat sendiri; biarkan kotaknya yang membungkus. */
+  const statusTeratas = [...statusLewat.entries()].sort((a,b) => b[1] - a[1]).slice(0, 3)
+    .map(([st, n]) => "\u2013 " + RE_ID.format(n) + " \u00d7 \u201c" + st.slice(0, 60) + "\u201d").join("\n");
+
   const rincianLewat = !skipped ? "" :
-    "\n\n" + skipped + " dari " + (detail + skipped) + " baris file tidak ikut masuk:" +
-    (alasan.total    ? "\n  \u2022 " + alasan.total    + " baris \u201cTotal \u2026\u201d di kaki sheet \u2014 memang bukan transaksi." : "") +
-    (alasan.tanggal  ? "\n  \u2022 " + alasan.tanggal  + " baris tanpa tanggal yang terbaca." : "") +
-    (alasan.kosong   ? "\n  \u2022 " + alasan.kosong   + " baris tanpa satu pun kolom terisi \u2014 biasanya baris kosong atau judul berulang." : "");
+    "\n\n" + RE_ID.format(skipped) + " dari " + RE_ID.format(detail + skipped) +
+      " baris file tidak ikut masuk \u2014 dan hampir selalu itu memang benar:" +
+    (L.batal ? "\n\n\u2022 " + RE_ID.format(L.batal) + " baris PESANAN BATAL" +
+        (L.nBatal ? " senilai " + rp(L.nBatal) : "") +
+        ". Barangnya tidak pernah keluar gudang dan uangnya tidak pernah masuk ke saldo Anda" +
+        (L.nBatal ? ", jadi kalau ikut dihitung omzet Anda justru kelebihan " + rp(L.nBatal) +
+                    " dari yang sebenarnya." : ".") : "") +
+    (L.belum ? "\n\n\u2022 " + RE_ID.format(L.belum) + " baris PESANAN BELUM SELESAI" +
+        (L.nBelum ? " senilai " + rp(L.nBelum) : "") +
+        " \u2014 masih dikirim atau menunggu diterima pembeli, jadi belum boleh diakui sebagai penjualan. " +
+        "Ini satu-satunya yang perlu diingat: angkanya masuk sendiri kalau Anda impor ulang " +
+        "setelah pesanannya rampung." : "") +
+    (L.tanpaStatus ? "\n\n\u2022 " + RE_ID.format(L.tanpaStatus) +
+        " baris tanpa tanggal yang terbaca. Periksa lewat tombol di bawah \u2014 kalau ternyata " +
+        "transaksi sungguhan, kolom tanggalnya yang perlu dicocokkan ulang saat mengimpor." : "") +
+    (alasan.total ? "\n\n\u2022 " + RE_ID.format(alasan.total) +
+        " baris \u201cTotal \u2026\u201d di kaki sheet \u2014 memang bukan transaksi." : "") +
+    (alasan.kosong ? "\n\n\u2022 " + RE_ID.format(alasan.kosong) +
+        " baris tanpa satu pun kolom terisi \u2014 biasanya baris kosong atau baris judul yang berulang." : "") +
+    (statusTeratas ? "\n\nStatus yang paling banyak dilewati, apa adanya dari file Anda:\n" + statusTeratas : "");
 
   setTimeout(async () => {
     const teks =
@@ -7472,7 +7512,7 @@ async function doImport(rows){
       (perUnit ? "\nSetiap baris dihitung 1 unit." : "") +
       (added ? "\n" + added + " SKU baru ditambahkan ke Master Produk — isi Harga Modal-nya agar HPP terhitung." : "") +
       rincianLewat +
-      (skipped ? "\n\nUnduh daftarnya untuk memeriksa sendiri \u2014 kalau ternyata ada transaksi sungguhan di situ, kolom tanggalnya yang perlu dicocokkan ulang." : "");
+      (skipped ? "\n\nSemua baris yang dilewati bisa Anda unduh dan periksa sendiri." : "");
     const tombol = skipped
       ? [{ label:"Unduh baris terlewat", gaya:"ghost", nilai:"unduh" }, { label:"Tutup", gaya:"primary", nilai:true }]
       : [{ label:"Tutup", gaya:"primary", nilai:true }];
