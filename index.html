@@ -369,6 +369,20 @@ tbody tr.sub:hover td{background:var(--surface3)}
   position:fixed; z-index:60; pointer-events:none; background:var(--surface); border:1px solid var(--line2);
   border-radius:8px; padding:8px 10px; font-size:12px; box-shadow:var(--shadow); opacity:0; transition:opacity .1s;
 }
+/* Baris laporan yang punya penjelasan: garis bawah putus-putus yang halus —
+   cukup untuk memberi tahu "ada yang bisa dilihat di sini", tidak cukup untuk
+   mengganggu orang yang cuma ingin membaca angkanya. */
+.jls{cursor:help; text-decoration:underline dotted var(--line2); text-underline-offset:3px}
+.jls:hover,.jls:focus{text-decoration-color:var(--accent); outline:none}
+#jbox{position:fixed; z-index:120; width:330px; max-width:calc(100vw - 24px);
+  background:var(--surface); color:var(--ink); border:1px solid var(--line2);
+  border-radius:10px; padding:13px 15px; box-shadow:0 14px 38px rgba(0,0,0,.20);
+  font-size:12.8px; line-height:1.62; opacity:0; visibility:hidden;
+  transition:opacity .12s ease; pointer-events:none}
+#jbox.on{opacity:1; visibility:visible}
+#jbox .jt{font-weight:600; font-size:13px; margin-bottom:6px; color:var(--ink)}
+#jbox .jk{color:var(--ink2)}
+@media (max-width:900px){ #jbox{width:auto; left:12px!important; right:12px!important} }
 .tip .tt{font-weight:600; margin-bottom:4px}
 .tip .tr{display:flex; justify-content:space-between; gap:16px}
 .tip .tr b{font-family:"IBM Plex Mono",monospace; font-weight:500}
@@ -473,6 +487,7 @@ dialog .db{max-height:min(70vh,620px); overflow-y:auto}
 </div>
 
 <div class="tip" id="tip"></div>
+<div id="jbox" role="tooltip" aria-hidden="true"></div>
 
 <dialog id="dlg2">
   <div class="dh"><h2 id="d2-t">Konfirmasi</h2></div>
@@ -4134,9 +4149,99 @@ function stmt(title, sub, rows){
     <div class="sh">${esc(title)}</div><div class="ss">${esc(sub)}</div>
     <table>${rows}</table></div></div>`;
 }
+/* ====================== penjelasan baris laporan ======================
+   Nama akun akuntansi itu padat dan asing bagi penjual — "Beban Program
+   Marketplace" tidak memberi tahu apa pun tentang Gratis Ongkir XTRA. Tiap baris
+   laporan karena itu bisa disinggung kursornya untuk memunculkan penjelasan:
+   biaya apa itu sebenarnya, dari kolom mana asalnya, dan apa yang perlu
+   diperhatikan. Sengaja tidak ditulis di layar terus-menerus supaya laporannya
+   tetap bersih dan enak dibaca. */
+const PENJELASAN = {
+  "Penjualan bruto": "Harga barang yang dibayar pembeli, SEBELUM dipotong apa pun oleh marketplace. Bukan uang yang Anda terima. Diambil dari kolom harga asli produk di laporan penghasilan, jadi angka ini sengaja besar — seluruh potongan baru muncul di baris-baris di bawahnya.",
+  "Diskon & voucher ditanggung penjual": "Potongan harga yang Anda biayai sendiri: voucher toko, diskon kampanye yang Anda ikuti, potongan checkout. Voucher yang ditanggung marketplace TIDAK masuk sini, karena uangnya tetap Anda terima penuh.",
+  "Pengembalian dana di dalam pesanan": "Uang yang dikembalikan ke pembeli dan sudah langsung dipotong di rincian pesanan itu sendiri — pembatalan sebagian, kompensasi keluhan, barang kurang. Terpotong sebelum dana cair ke saldo Anda.",
+  "Pengembalian setelah dana cair (sheet Adjustment)": "Retur atau refund yang terjadi SESUDAH uang masuk ke saldo Anda, jadi marketplace menariknya kembali belakangan. Sumbernya sheet Adjustment (Shopee) atau baris penyesuaian (TikTok). Kalau baris ini nol padahal Anda pernah menerima retur, penyesuaiannya belum terimpor.",
+  "Retur & potongan penjualan": "Seluruh pengembalian dana ke pembeli — pembatalan sebagian, refund keluhan, dan retur barang. Mengurangi penjualan, karena penjualannya memang tidak jadi.",
+  "Penjualan neto": "Penjualan bruto dikurangi diskon Anda sendiri dan seluruh pengembalian. INILAH omzet Anda yang sebenarnya, dan angka inilah yang dipakai sebagai 100% saat menghitung margin di kolom persentase.",
+  "Harga pokok barang terjual": "Modal barang yang benar-benar keluar dari gudang, dihitung dari Harga Modal per SKU di Master Produk dikali jumlah terjual. Kalau ada SKU yang Harga Modal-nya masih kosong, HPP-nya dihitung nol dan laba Anda terlihat lebih besar dari yang sebenarnya.",
+  "(sudah dikurangi harga pokok barang retur)": "Barang yang diretur kembali ke gudang modalnya dikembalikan lagi, karena barangnya tidak jadi keluar. Baris ini hanya memperlihatkan berapa yang sudah dikembalikan — angkanya sudah termasuk di baris HPP di atas.",
+  "Selisih harga perolehan & ongkos masuk": "Selisih antara harga modal tetap yang Anda pakai dengan harga beli sesungguhnya, ditambah ongkos masuk seperti ongkir pembelian dan bea. Muncul kalau harga beli dari supplier naik turun.",
+  "Laba kotor": "Penjualan neto dikurangi harga pokok. Ini laba sebelum satu pun biaya marketplace dan biaya operasional dihitung — jadi belum bisa dibilang untung.",
+  "Beban Komisi / Biaya Administrasi MP": "Komisi yang dipungut marketplace dari tiap pesanan — persentase dari harga jual. Shopee menyebutnya Biaya Administrasi, TikTok Biaya Komisi Platform, Lazada Commission. Biasanya biaya marketplace terbesar.",
+  "Beban Biaya Layanan Marketplace": "Biaya layanan dan biaya pemrosesan pembayaran: Biaya Layanan Shopee, Biaya Pembayaran TikTok, Payment Fee Lazada. Berbeda dari komisi — ini ongkos memproses transaksinya, bukan bagi hasil penjualan.",
+  "Beban Program Marketplace (GO/Promo Xtra)": "Iuran program yang Anda ikuti agar produk lebih laku: Gratis Ongkir XTRA, Cashback XTRA, Program Bebas Ongkir, Free Shipping Max. Ditagih per pesanan selama toko Anda ikut program itu.",
+  "Beban Proses Pesanan": "Biaya tetap per pesanan yang dipungut marketplace untuk memproses order, terlepas dari besar kecilnya nilai pesanan. Terasa berat untuk toko yang banyak pesanan bernilai kecil.",
+  "Beban Ongkir Ditanggung Penjual": "Sisa ongkir yang jatuh ke Anda setelah dihitung bersih — ongkos kirim ke jasa logistik dikurangi ongkir yang dibayar pembeli dan subsidi dari marketplace. Yang dicatat hanya sisanya, bukan ongkir kotor.",
+  "Beban Ongkir Retur Ditanggung Penjual": "Ongkos mengirim balik barang yang diretur pembeli, saat biayanya jatuh ke Anda. Sering terlewat diperhitungkan padahal jumlahnya bisa besar untuk toko dengan retur tinggi.",
+  "Beban Iklan Marketplace": "Biaya iklan di dalam marketplace yang dipotong langsung dari penghasilan Anda — Shopee Isi Saldo Otomatis, TikTok Biaya Iklan GMV Max. Iklan Lazada Sponsored Solutions biasanya ditagih terpisah dan harus dicatat sendiri di halaman Iklan.",
+  "Beban Komisi Afiliasi / AMS": "Komisi untuk afiliator dan kreator yang menjualkan produk Anda — Shopee AMS/Affiliate, TikTok Komisi Afiliasi. Hanya keluar kalau memang ada penjualan lewat mereka.",
+  "Beban Marketplace Lainnya": "Biaya marketplace yang jenisnya belum dikenali aplikasi. Kalau angkanya besar, buka Penghasilan Marketplace dan periksa kolom mana yang masuk ke sini — kemungkinan ada jenis biaya baru yang perlu ditempatkan lebih tepat.",
+  "Total beban marketplace": "Seluruh potongan marketplace. Bandingkan dengan Penjualan neto: inilah persentase omzet yang tidak pernah sampai ke tangan Anda. Untuk toko marketplace, 15–30% masih lazim.",
+  "Beban Gaji & Upah": "Upah karyawan, admin, dan tenaga packing — termasuk THR dan bonus. Gaji Anda sendiri sebagai pemilik sebaiknya TIDAK di sini; itu Prive, pengambilan pemilik.",
+  "Beban Sewa": "Sewa ruko, gudang, atau kantor untuk periode ini. Kalau bayarnya setahun di muka, yang masuk sini hanya bagian bulan berjalan; sisanya Biaya Dibayar di Muka.",
+  "Beban Listrik, Air & Internet": "Utilitas untuk menjalankan usaha.",
+  "Beban Packing & Perlengkapan": "Kardus, bubble wrap, plastik, lakban, label, thermal paper. Biaya kecil yang menumpuk — sering jadi kejutan kalau baru dihitung akhir tahun.",
+  "Beban Transportasi & Pengiriman": "Ongkos kirim dan transportasi yang Anda bayar sendiri di luar marketplace — antar ke drop point, kurir untuk penjualan manual, bensin.",
+  "Beban Administrasi Bank": "Biaya admin rekening, biaya transfer, dan potongan bank saat menarik dana dari saldo marketplace.",
+  "Beban Penyusutan": "Nilai aset tetap yang habis terpakai tahun ini — komputer, motor, rak, mesin. Dihitung otomatis dari halaman Aset Tetap. Tidak ada uang keluar, tapi tetap biaya yang sah.",
+  "Beban Pemasaran Lain (di luar MP)": "Promosi di luar marketplace: iklan Meta dan Google, endorse, cetak brosur, biaya konten.",
+  "Beban Lain-lain": "Biaya sah yang tidak masuk kategori mana pun. Kalau nilainya besar, sebaiknya dipecah jadi akunnya sendiri supaya laporan Anda tetap bisa dibaca.",
+  "Kerugian Barang Retur & Hilang": "Nilai barang yang rusak, hilang di jalan, atau kembali dalam keadaan tidak bisa dijual lagi. Beda dari retur biasa: pada retur biasa barangnya kembali utuh dan modalnya dipulihkan.",
+  "Total beban operasional": "Seluruh biaya menjalankan usaha di luar potongan marketplace dan modal barang.",
+  "Laba usaha": "Laba dari kegiatan usaha pokok — sesudah modal barang, potongan marketplace, dan biaya operasional. Ini ukuran paling jujur apakah model bisnis Anda sehat, karena belum dicampuri pendapatan dan biaya di luar usaha.",
+  "Pendapatan lain-lain": "Penerimaan di luar penjualan barang: bunga bank, penjualan kardus bekas, kompensasi yang tidak terkait pesanan tertentu.",
+  "Ganti rugi dari marketplace": "Kompensasi dari marketplace untuk paket hilang, rusak di perjalanan, atau penggantian ongkir. Bukan penjualan, jadi tidak boleh menambah omzet — termasuk untuk perhitungan PPh Final.",
+  "Beban bunga": "Bunga pinjaman modal usaha, paylater, atau pinjaman platform. Terpisah dari beban operasional karena ini biaya pendanaan, bukan biaya menjalankan usaha.",
+  "Laba sebelum pajak": "Seluruh pendapatan dikurangi seluruh beban, sebelum PPh. Angka inilah yang jadi titik awal rekonsiliasi fiskal.",
+  "Beban PPh Final UMKM": "PPh Final 0,5% dari peredaran bruto untuk UMKM. Dihitung dari OMZET, bukan dari laba — jadi tetap terutang walaupun Anda rugi. Untuk orang pribadi, Rp 500 juta pertama tiap tahun dibebaskan.",
+  "Laba bersih": "Yang benar-benar menjadi milik Anda setelah semuanya dihitung, termasuk pajak. Ini yang menambah modal di Neraca.",
+  "Kas": "Uang tunai di tangan dan di laci toko.",
+  "Bank": "Saldo rekening bank usaha.",
+  "Piutang Marketplace — Shopee": "Uang yang sudah menjadi hak Anda tapi masih ditahan Shopee — pesanan selesai yang dananya belum ditarik ke bank. Cocokkan dengan Saldo Penjual di Seller Centre.",
+  "Piutang Marketplace — TikTok Shop": "Saldo yang masih tertahan di TikTok Shop dan belum ditarik ke rekening Anda.",
+  "Piutang Marketplace — Lazada": "Saldo yang masih tertahan di Lazada Wallet dan belum ditarik ke rekening Anda.",
+  "Piutang Pesanan Belum Dicairkan": "Pesanan yang barangnya sudah keluar tapi dananya belum dilepaskan marketplace. Timbul dari jurnal cut-off supaya penjualan tercatat di bulan barangnya keluar, bukan bulan uangnya cair.",
+  "Piutang Lain-lain": "Tagihan ke pihak lain di luar marketplace — termasuk penjualan manual yang pembayarannya belum diterima.",
+  "Persediaan Barang Dagang": "Nilai modal barang yang masih ada di gudang. Dihitung dari stok awal ditambah pembelian dikurangi barang yang terjual.",
+  "PPN Masukan": "PPN yang Anda bayar saat membeli barang, yang bisa dikreditkan. Hanya relevan kalau Anda sudah Pengusaha Kena Pajak.",
+  "Biaya Dibayar di Muka": "Biaya yang sudah dibayar untuk periode yang belum berjalan — sewa setahun di muka, asuransi, langganan tahunan.",
+  "PPh 22 Dipungut Marketplace (Kredit Pajak)": "PPh Pasal 22 yang sudah dipungut marketplace dari penghasilan Anda. Bukan biaya, melainkan cicilan pajak yang bisa mengurangi PPh Final terutang.",
+  "Peralatan & Inventaris": "Harga perolehan peralatan usaha: komputer, printer label, rak, etalase.",
+  "Kendaraan": "Harga perolehan kendaraan usaha.",
+  "Bangunan": "Harga perolehan bangunan usaha.",
+  "Akumulasi Penyusutan Peralatan": "Total penyusutan peralatan sejak dibeli sampai hari ini. Mengurangi nilai aset di Neraca, tanpa ada uang yang keluar.",
+  "Akumulasi Penyusutan Kendaraan": "Total penyusutan kendaraan sejak dibeli sampai hari ini.",
+  "Akumulasi Penyusutan Bangunan": "Total penyusutan bangunan sejak dibeli sampai hari ini.",
+  "Utang Usaha (Supplier)": "Barang yang sudah Anda terima tapi belum dibayar ke supplier.",
+  "Utang Lain-lain / Pinjaman": "Pinjaman modal usaha, paylater, dan utang di luar supplier.",
+  "PPN Keluaran": "PPN yang Anda pungut dari pembeli dan wajib disetor ke negara. Uang titipan, bukan pendapatan Anda.",
+  "Utang PPh Final UMKM": "PPh Final yang sudah terutang tapi belum disetor. Berkurang setiap Anda menyetor lewat kode billing.",
+  "Utang Gaji": "Gaji karyawan yang sudah menjadi hak mereka tapi belum dibayarkan.",
+  "Modal pemilik": "Uang dan barang yang Anda setorkan sendiri ke dalam usaha.",
+  "Prive": "Uang usaha yang Anda ambil untuk keperluan pribadi. Bukan biaya — mengurangi modal, bukan mengurangi laba. Inilah tempat yang benar untuk 'gaji' pemilik.",
+  "Laba (rugi) tahun berjalan": "Laba bersih periode ini yang menambah modal Anda. Inilah jembatan antara Laba Rugi dan Neraca.",
+  "Selisih (harus nol)": "Bukti bahwa pembukuan seimbang: total aset harus sama persis dengan kewajiban ditambah ekuitas. Kalau tidak nol, ada jurnal yang timpang dan angka laporannya belum bisa dipercaya.",
+  "Total aset": "Seluruh harta usaha: uang, piutang, persediaan, dan aset tetap.",
+  "Total kewajiban": "Seluruh utang usaha kepada pihak lain.",
+  "Total ekuitas": "Bagian harta yang benar-benar milik Anda setelah seluruh utang dilunasi."
+  };
+const kunciJelas = t => norm(String(t || ""));
+/* Dibangun saat pertama kali dipakai, bukan saat berkas dimuat: norm() baru
+   lahir lebih bawah di berkas ini, dan memanggilnya terlalu dini membuat
+   seluruh aplikasi gagal start. */
+let PENJELASAN_IDX = null;
+const idxJelas = () => (PENJELASAN_IDX || (PENJELASAN_IDX = new Map(
+  Object.entries(PENJELASAN).map(([k,v]) => [kunciJelas(k), v]))));
+const adaJelas = t => idxJelas().has(kunciJelas(t));
+/* Atribut yang ditempel ke sel label. Nilainya disimpan di atribut, bukan
+   diambil ulang dari kamus saat hover, supaya baris yang labelnya dibentuk
+   sendiri pun tetap bisa membawa penjelasan. */
+const attrJelas = t => adaJelas(t)
+  ? ` class="jls" tabindex="0" data-jelas="${esc(idxJelas().get(kunciJelas(t)))}" data-jjudul="${esc(t)}"` : "";
+
 const rSec = t => `<tr class="sec"><td colspan="3">${esc(t)}</td></tr>`;
-const rItem = (t, v, p) => `<tr class="ind"><td>${esc(t)}</td><td class="amt${v<0?" neg":""}">${rpS(v)}</td><td class="pct">${p??""}</td></tr>`;
-const rTot = (t, v, p, grand) => `<tr class="${grand?"grand":"tot"}"><td>${esc(t)}</td><td class="amt${v<0?" neg":""}">${rpS(v)}</td><td class="pct">${p??""}</td></tr>`;
+const rItem = (t, v, p) => `<tr class="ind"><td${attrJelas(t)}>${esc(t)}</td><td class="amt${v<0?" neg":""}">${rpS(v)}</td><td class="pct">${p??""}</td></tr>`;
+const rTot = (t, v, p, grand) => `<tr class="${grand?"grand":"tot"}"><td${attrJelas(t)}>${esc(t)}</td><td class="amt${v<0?" neg":""}">${rpS(v)}</td><td class="pct">${p??""}</td></tr>`;
 
 /* ---------- jurnal majemuk ---------- */
 function viewJurnal(){
@@ -5447,7 +5552,9 @@ function stmtBanding(title, sub, defs, kol){
     if (b.jenis === "sec")
       return `<tr class="sec"><td class="lbl2" colspan="${kol.length+1}">${esc(b.t)}</td></tr>`;
     const kls = b.jenis === "grand" ? "grand" : b.jenis === "tot" ? "tot" : "ind";
-    return `<tr class="${kls}"><td class="lbl2">${esc(b.t)}</td>` + kol.map(k => {
+    const aj = adaJelas(b.t)
+      ? ` tabindex="0" data-jelas="${esc(idxJelas().get(kunciJelas(b.t)))}" data-jjudul="${esc(b.t)}"` : "";
+    return `<tr class="${kls}"><td class="lbl2${adaJelas(b.t) ? " jls" : ""}"${aj}>${esc(b.t)}</td>` + kol.map(k => {
       const v = nilaiBaris(b, k.C);
       return `<td class="calc${v < 0 ? " neg" : ""}"${k.total ? ' style="border-left:1px solid var(--line2)"' : ""}>${v == null ? "" : rpS(v)}</td>`;
     }).join("") + `</tr>`;
@@ -5996,6 +6103,64 @@ document.addEventListener("click", async e => {
   if (t.id === "btn-reset"){
     if (await konfirmasi("Hapus seluruh data pembukuan? Tindakan ini tidak bisa dibatalkan.", "Kosongkan pembukuan", "Hapus semua")){ S = BLANK(); touch(); } return; }
 });
+/* ---------- panel penjelasan baris laporan ----------
+   Muncul di KIRI baris yang disinggung, karena angkanya ada di kanan dan panel
+   di kanan akan menutupi persis hal yang sedang dibaca. Kalau di kiri tidak
+   cukup ruang, baru digeser ke kanan. Ikut tampil saat baris difokuskan lewat
+   Tab, supaya yang memakai papan ketik juga kebagian. */
+const jbox = document.getElementById("jbox");
+let jTimer = null;
+function tampilJelas(el){
+  clearTimeout(jTimer);
+  const isi = el.dataset.jelas, judul = el.dataset.jjudul || "";
+  if (!isi) return;
+  jbox.innerHTML = `<div class="jt">${esc(judul)}</div><div class="jk">${esc(isi)}</div>`;
+  jbox.classList.add("on"); jbox.setAttribute("aria-hidden", "false");
+  const r = el.getBoundingClientRect();
+  const sela = 14, tepi = 12;
+  /* Sedapat mungkin di KIRI. Kalau ruang di kiri sempit, panelnya dipersempit
+     dulu sampai batas yang masih enak dibaca; baru kalau tetap tidak muat,
+     dipindah ke kanan. Menyempit lebih baik daripada melompat ke sisi lain,
+     karena mata sudah terlanjur menunggu di kiri. */
+  const MAKS = 330, MIN = 235;
+  const ruangKiri = r.left - tepi - sela;
+  let kiri, lebar;
+  if (ruangKiri >= MIN){
+    lebar = Math.min(MAKS, ruangKiri);
+    kiri = r.left - lebar - sela;
+  } else {
+    lebar = Math.min(MAKS, innerWidth - r.right - sela - tepi);
+    if (lebar < MIN) lebar = Math.min(MAKS, innerWidth - 2 * tepi);
+    kiri = Math.min(r.right + sela, innerWidth - lebar - tepi);
+  }
+  jbox.style.width = Math.round(lebar) + "px";
+  const tinggi = jbox.offsetHeight;
+  let atas = r.top + r.height / 2 - tinggi / 2;
+  atas = Math.max(12, Math.min(atas, innerHeight - tinggi - 12));
+  jbox.style.left = Math.max(tepi, kiri) + "px";
+  jbox.style.top = atas + "px";
+}
+function sembunyiJelas(){
+  jTimer = setTimeout(() => {
+    jbox.classList.remove("on"); jbox.setAttribute("aria-hidden", "true");
+  }, 90);
+}
+document.addEventListener("mouseover", e => {
+  const el = e.target.closest && e.target.closest("[data-jelas]");
+  if (el) tampilJelas(el);
+});
+document.addEventListener("mouseout", e => {
+  if (e.target.closest && e.target.closest("[data-jelas]")) sembunyiJelas();
+});
+document.addEventListener("focusin", e => {
+  const el = e.target.closest && e.target.closest("[data-jelas]");
+  if (el) tampilJelas(el);
+});
+document.addEventListener("focusout", e => {
+  if (e.target.closest && e.target.closest("[data-jelas]")) sembunyiJelas();
+});
+addEventListener("scroll", () => { jbox.classList.remove("on"); }, true);
+
 document.addEventListener("input", e => {
   const id = e.target.id;
   if (id !== "sku-cari" && id !== "resep-cari") return;
