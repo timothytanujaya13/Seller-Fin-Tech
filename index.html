@@ -1152,7 +1152,22 @@ function hitungPenyusutan(m, a){
 }
 
 /* ============================ mesin akuntansi ============================ */
+/* Menghitung seluruh buku itu mahal, dan halaman Ringkasan, Laba Rugi, Neraca,
+   Arus Kas, Neraca Saldo, dan Rekonsiliasi semuanya meminta hitungan yang SAMA.
+   Hasilnya disimpan dan dipakai ulang selama datanya belum berubah — kuncinya
+   memuat cap waktu buku, toko yang sedang disaring, dan periodenya, jadi begitu
+   salah satu berubah hitungannya diulang dari nol. Empat hasil terakhir disimpan;
+   lebih dari itu tidak berguna karena orang jarang bolak-balik lebih jauh. */
+const HASIL = new Map();
 function compute(m, a){
+  const kunci = [S.ts || 0, pilihList().join(","), S.setup.mulai, S.setup.akhir, m || "", a || ""].join("|");
+  if (HASIL.has(kunci)) return HASIL.get(kunci);
+  const hasil = hitungBuku(m, a);
+  if (HASIL.size > 3) HASIL.delete(HASIL.keys().next().value);
+  HASIL.set(kunci, hasil);
+  return hasil;
+}
+function hitungBuku(m, a){
   segarkanPeta();
   const batasMulai = m || S.setup.mulai, batasAkhir = a || S.setup.akhir;
   const inPeriod = d => d && d >= batasMulai && d <= batasAkhir;
@@ -1903,7 +1918,7 @@ async function boot(){
 }
 
 function save(){
-  segarkanPeta();
+  segarkanPeta(); HASIL.clear(); REKAP.clear();
   if (!AKUN) return;
   S.ts = Date.now();
   let lokalOK = true;
@@ -2285,6 +2300,28 @@ function viewRingkasan(R){
   <div class="pagehead"><h1>Ringkasan</h1>
     <p>Seluruh angka dihitung ulang setiap kali data berubah, dibatasi periode yang disetel di Pengaturan.</p></div>
   ${!S.income.length && !S.produk.length ? `<div class="hint" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap"><span style="flex:1;min-width:260px">Pembukuan masih kosong. Isi dengan satu semester data contoh untuk melihat cara kerjanya, lalu kosongkan lagi kapan saja dari Pengaturan.</span><button class="btn primary" id="btn-demo">Muat data contoh</button></div>` : ""}
+  ${(() => {
+    /* Peringatan kapasitas. Pembukuan ini disimpan sebagai SATU dokumen: seluruhnya
+       dibaca, dihitung, dan dikirim ke server sekali jalan. Bentuk itu ringan dan
+       sederhana, tapi ada batasnya — dan penjual berhak tahu batas itu sebelum
+       menabraknya, bukan sesudah layarnya membeku. Ukuran ditaksir dari jumlah baris,
+       bukan dengan menghitung ukuran sebenarnya, supaya tidak ikut memberati. */
+    const baris = ["income","order","adjust","iklan","saldo","beli","ops","jurnal","mutasi","produk","varian","resep","manual"]
+      .reduce((a,k) => a + ((S[k] || []).length), 0);
+    if (baris < 25000) return "";
+    const mb = (baris * 0.22 / 1000).toFixed(1);
+    const merah = baris >= 60000;
+    return `<div class="${merah ? "warnbox" : "hint"}">
+      <strong>Pembukuan ini sudah ${RE_ID.format(baris)} baris (kira-kira ${esc(mb)} MB).</strong>
+      ${merah
+        ? `Pada ukuran ini halaman mulai terasa berat dan salinan luringnya tidak lagi muat di peramban —
+           yang tersimpan tinggal di server. Waktunya menutup buku tahun berjalan: unduh cadangan
+           JSON-nya dari Pengaturan sebagai arsip, lalu mulai periode baru. Kalau usaha Anda memang
+           sebesar ini seterusnya, datanya perlu dipindah ke tabel database tersendiri — bukan lagi satu dokumen.`
+        : `Masih nyaman, tapi sudah separuh jalan menuju batas. Saran: tetap centang <strong>Ringkas</strong>
+           tiap kali mengimpor, dan rencanakan menutup buku tiap tahun supaya ukurannya tidak menumpuk terus.`}
+    </div>`;
+  })()}
   ${(() => { const d = cekDuplikat(); return d.length ? `<div class="warnbox"><strong>Kemungkinan data kembar.</strong>
       ${esc(d.join(", "))}. Ini biasanya terjadi kalau file yang sama diimpor dua kali.
       Buka tabel yang disebut, lalu impor ulang filenya dengan pilihan <em>Ganti data periode ini</em>.</div>` : ""; })()}
@@ -2481,7 +2518,20 @@ function rentangBulan(){
     return [u.skuFrom || S.setup.mulai.slice(0,7), u.skuTo || S.setup.akhir.slice(0,7)];
   return [S.setup.mulai.slice(0,7), S.setup.akhir.slice(0,7)];
 }
+/* Rekap per SKU dipakai halaman Produk & Pesanan, unduhan template harga modal,
+   dan halaman Resep — hasilnya disimpan dengan cara yang sama seperti hitungan buku. */
+const REKAP = new Map();
 function rekapSku(){
+  const u = S.ui || {};
+  const kunci = [S.ts || 0, pilihList().join(","), S.setup.mulai, S.setup.akhir,
+                 u.skuMode || "", u.skuFrom || "", u.skuTo || "", u.skuCari || ""].join("|");
+  if (REKAP.has(kunci)) return REKAP.get(kunci);
+  const hasil = hitungRekapSku();
+  if (REKAP.size > 2) REKAP.delete(REKAP.keys().next().value);
+  REKAP.set(kunci, hasil);
+  return hasil;
+}
+function hitungRekapSku(){
   const [dari, sampai] = rentangBulan();
   const P = Object.fromEntries(S.produk.map(p => [String(p.sku), p]));
   const MODAL = petaModal();
@@ -2585,12 +2635,19 @@ function rekapSku(){
     const kembali = num(RQ[normKode(g.sku)] || 0);
     return awal + beli - jual + kembali;
   };
+  /* Dulu tiap kelompok memindai seluruh daftar varian satu per satu. Tiga ribu
+     kelompok dikali ribuan varian — dibangun sekali sebagai peta, jadinya seketika. */
+  const VK = new Map();
+  for (const v of (S.varian || [])){
+    const k = normKode(v.kode), m = normKode(v.model);
+    if (k && !VK.has(k)) VK.set(k, v);
+    if (m && !VK.has(m)) VK.set(m, v);
+  }
   const cari = norm((S.ui || {}).skuCari || "");
   return [...G.values()].filter(g => !cari ||
       norm(g.sku).includes(cari) || norm(g.nama).includes(cari) || norm(g.kode).includes(cari)).map(g => {
     const ids = [...idsDari(g)];
-    const vk = (S.varian || []).find(v => String(v.kode || "").trim().toUpperCase() === String(g.sku).toUpperCase()
-                                       || String(v.model || "").trim().toUpperCase() === String(g.sku).toUpperCase());
+    const vk = VK.get(normKode(g.sku));
     const res = resepDari(g.sku, RES);
     const modal = res ? modalKomponen(res, RES)
                       : ((vk && num(vk.modal)) || ids.reduce((a,id) => a || num(MODAL[id]), 0));
@@ -2611,7 +2668,15 @@ function viewSku(){
   const semuaToko = daftarToko();
   const multiToko = R.some(r => Object.keys(r.perToko).length > 1);
 
-  const baris = R.map(r => {
+  /* Tiga ribu baris sekaligus berarti puluhan ribu sel dan ribuan kotak isian —
+     cukup untuk membekukan peramban di komputer yang tidak kencang. Barisnya sudah
+     terurut dari omzet terbesar, jadi 300 teratas hampir selalu yang dicari; sisanya
+     dibuka lewat tombol, atau disaring lewat kotak Cari. Angka di kaki tabel tetap
+     dijumlahkan dari SELURUH SKU, bukan cuma yang tampil. */
+  const LIM_SKU = 300;
+  const semuaSku = u.skuSemua || R.length <= LIM_SKU;
+  const Rtampil = semuaSku ? R : R.slice(0, LIM_SKU);
+  const baris = Rtampil.map(r => {
     const ada = buka.has(r.sku);
     const bulanKeys = Object.keys(r.bulan).sort();
     const tokoKeys = Object.keys(r.perToko).sort();
@@ -2699,6 +2764,10 @@ function viewSku(){
     ${S.order.length ? `<button class="btn" data-xls="order">Unduh CSV</button>` : ""}
     <button class="btn ghost" id="sku-mentah">Data mentah</button>
   </div>
+  ${!semuaSku ? `<div class="hint">Menampilkan <strong>${LIM_SKU} SKU dengan omzet terbesar</strong>
+    dari ${R.length} SKU, supaya halaman ini tetap ringan. Ketik di kotak <strong>Cari SKU atau nama</strong>
+    untuk menemukan SKU mana pun — pencarian menjangkau semuanya.
+    <button class="btn ghost" id="sku-semua" style="margin-left:8px">Tampilkan semua ${R.length} SKU</button></div>` : ""}
   ${!R.length ? `<div class="tablewrap"><div class="empty">Belum ada data pesanan pada rentang ini.
     Unggah export <strong>Pesanan → Semua Pesanan</strong> dari Seller Centre — kolom Nomor Referensi SKU
     di file itu yang jadi identitas barang, jadi ukuran dan warna terpisah rapi.</div></div>` : `
@@ -2725,7 +2794,7 @@ function viewSku(){
       <th class="r" style="width:120px">HPP</th><th class="r" style="width:120px">Laba Kotor</th>
       <th class="r" style="width:80px">Margin</th><th class="r" style="width:100px">Stok Akhir</th></tr></thead>
     <tbody>${baris}</tbody>
-    <tfoot><tr><td></td><td><strong>${R.length} SKU</strong></td><td></td><td></td>
+    <tfoot><tr><td></td><td><strong>${R.length} SKU${semuaSku ? "" : " · " + Rtampil.length + " tampil"}</strong></td><td></td><td></td>
       <td class="calc"><strong>${rp(T.qty)}</strong></td><td></td>
       <td class="calc"><strong>${rp(T.omzet)}</strong></td><td></td>
       <td class="calc"><strong>${rp(T.hpp)}</strong></td>
@@ -5871,6 +5940,7 @@ document.addEventListener("click", async e => {
       "\nPeriksa kolom Masuk Ke dan Biaya Admin bila perlu."), 60);
     return;
   }
+  if (t.id === "sku-semua"){ (S.ui ||= {}).skuSemua = true; render(); return; }
   const sa = t.closest("[data-showall]");
   if (sa){ showAll[sa.dataset.showall] = true; render(); return; }
   const imp = t.closest("[data-import]");
