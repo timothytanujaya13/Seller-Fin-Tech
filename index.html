@@ -2831,14 +2831,39 @@ async function unduhTemplateHpp(){
    jadi ID yang namanya persis sama diusulkan sebagai barang yang sama. */
 const namaKunci = t => norm(t).replace(/\s+/g, " ").trim();
 
+/* Mencari barang yang sama yang dijual di LEBIH DARI SATU TOKO.
+   Dulu penyaringnya cuma "Nama Produk sama" — dan itu salah besar untuk penjual
+   marketplace, karena satu judul panjang penuh kata kunci biasanya dipakai ulang
+   untuk puluhan listing: seluruh ukuran cincin 15 sampai 22, gold, silver, hitam,
+   semuanya berjudul sama. Menyamakannya berarti melebur ukuran dan warna jadi
+   satu barang, satu harga modal, satu kartu stok — persis kebalikan dari yang
+   diperjuangkan lewat Nomor Referensi SKU.
+   Penyaring sekarang menambahkan syarat yang menentukan: dua SKU hanya dianggap
+   barang yang sama bila keduanya terjual di TOKO YANG BERBEDA. Dua SKU yang
+   sama-sama laku di toko yang sama pasti dua barang berbeda — tidak ada penjual
+   yang memasang barang yang sama dua kali di satu toko dengan kode berbeda. */
 function grupKembar(){
+  const tokoSku = new Map();
+  for (const x of S.order){
+    const k = String(x.sku || ""); if (!k) continue;
+    (tokoSku.get(k) || tokoSku.set(k, new Set()).get(k)).add(outletDari(x));
+  }
+  const lintasToko = g => {
+    const sudah = new Set();
+    for (const p of g){
+      const T = tokoSku.get(String(p.sku));
+      if (!T || !T.size) return false;            // belum pernah laku — tidak bisa dipastikan
+      for (const t of T){ if (sudah.has(t)) return false; sudah.add(t); }
+    }
+    return true;
+  };
   const G = new Map();
   for (const p of S.produk){
     const n = namaKunci(p.nama);
     if (!n) continue;
     (G.get(n) || G.set(n, []).get(n)).push(p);
   }
-  return [...G.values()].filter(g => g.length > 1)
+  return [...G.values()].filter(g => g.length > 1 && lintasToko(g))
     .map(g => ({ nama: g[0].nama, anggota: g,
       kode: (g.find(p => String(p.kode || "").trim()) || {}).kode || "",
       sudah: new Set(g.map(p => String(p.kode || "").trim())).size === 1 && !!String(g[0].kode || "").trim() }))
@@ -2850,10 +2875,14 @@ function bukaGabung(){
   const belum = grup.filter(g => !g.sudah);
   document.getElementById("dlg-t").textContent = "Samakan produk antar toko";
   if (!grup.length){
-    dlgBody(`<div class="hint">Tidak ditemukan Nama Produk yang persis sama di lebih dari satu ID Produk.
-      Kalau nama barang di kedua toko Anda berbeda, samakan Kode Barang-nya secara manual di kolom
-      <strong>SKU Sendiri</strong> pada tabel di belakang — dua ID Produk dengan kode yang sama otomatis
-      dihitung sebagai satu barang.</div>`,
+    dlgBody(`<div class="hint"><strong>Tidak ada yang perlu disamakan.</strong>
+      Tidak ditemukan barang bernama sama yang terjual di toko berbeda dengan kode yang berbeda pula.
+      Biasanya itu kabar baik: berarti kode SKU Anda sudah konsisten di semua toko, sehingga barang
+      yang sama otomatis menyatu tanpa perlu tindakan apa pun.<br><br>
+      Kalau Anda yakin ada barang yang belum menyatu, samakan <strong>Kode Barang</strong>-nya
+      langsung di tabel di belakang — buka tanda <strong>+</strong> pada barisnya, lalu isi
+      kotak <em>Kode barang bersama</em>. Dua ID Produk dengan kode yang sama selalu dihitung
+      sebagai satu barang.</div>`,
       `<button type="button" class="btn primary" id="dlg-close">Tutup</button>`);
     document.getElementById("dlg-close").onclick = () => dlg.close();
     dlg.showModal(); return;
@@ -2867,10 +2896,14 @@ function bukaGabung(){
         ${g.sudah ? `<span class="chip ok" style="font-size:10.5px">sudah sama</span>` : ""}</div>
     </div>`).join("");
   dlgBody(`
-    <div class="hint">${grup.length} nama produk muncul di lebih dari satu ID Produk —
-      hampir pasti barang yang sama di dua toko Anda. Beri <strong>Kode Barang</strong> yang sama,
-      maka keduanya jadi satu baris: satu harga modal, satu kartu stok, satu margin.
+    <div class="hint">${grup.length} barang bernama sama yang terjual di <strong>toko berbeda</strong> —
+      hampir pasti barang yang sama. Beri <strong>Kode Barang</strong> yang sama, maka keduanya
+      jadi satu baris: satu harga modal, satu kartu stok, satu margin.
       ${belum.length ? `<strong>${belum.length}</strong> di antaranya belum disamakan.` : "Semuanya sudah disamakan."}</div>
+    <div class="warnbox" style="margin-bottom:12px">Yang sudah memakai kode SKU yang sama di semua toko
+      <strong>tidak perlu muncul di sini</strong> — barang seperti itu sudah menyatu sendiri.
+      Daftar ini hanya untuk barang yang kodenya berbeda antar toko. Periksa sekilas sebelum menyimpan:
+      pastikan ID Produk dalam satu baris memang barang yang sama, bukan dua ukuran atau dua warna.</div>
     <div style="display:grid;grid-template-columns:1.15fr 1.5fr;gap:12px;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);padding-bottom:6px;border-bottom:1px solid var(--line2)">
       <span>Nama produk &amp; ID</span><span>Kode barang bersama</span></div>
     ${baris}
@@ -2879,11 +2912,16 @@ function bukaGabung(){
      <button type="button" class="btn" id="gab-auto">Isi otomatis yang kosong</button>
      <button type="button" class="btn primary" id="gab-ok">Simpan</button>`);
   document.getElementById("dlg-close").onclick = () => dlg.close();
+  /* Isi otomatis memakai KODE ASLI salah satu anggotanya kalau ada — kode buatan
+     mesin seperti "B-8H2K1P" tidak berarti apa-apa buat penjual dan justru
+     memutus kaitan dengan kode yang dipakai sehari-hari di gudang. */
   document.getElementById("gab-auto").onclick = () => {
     document.getElementById("dlg-b").querySelectorAll("[data-gab]").forEach(inp => {
       if (inp.value.trim()) return;
       const g = grup[+inp.dataset.gab];
-      inp.value = "B-" + String(g.anggota[0].sku).slice(-6);
+      const punyaKode = g.anggota.map(p => String(p.kode || "").trim()).filter(Boolean)[0];
+      const terpendek = g.anggota.map(p => String(p.sku)).sort((a,b) => a.length - b.length)[0];
+      inp.value = punyaKode || terpendek;
     });
   };
   document.getElementById("gab-ok").onclick = () => {
