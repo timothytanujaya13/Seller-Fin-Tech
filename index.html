@@ -1,6 +1,5 @@
 <!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>Seller Fin Tech</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -6415,6 +6414,24 @@ const nafas = ms => new Promise(r => setTimeout(r, ms || 20));
 /* Satu file atau belasan file sekaligus. Tiap file dibaca berurutan supaya
    pemakaian memori tidak menumpuk, lalu seluruh sheet dari seluruh file
    digabung BERDASARKAN NAMA KOLOM di loadSheet(). */
+/* Pembaca Excel beratnya hampir satu megabita, padahal cuma dipakai saat mengimpor.
+   Dulu ia dimuat di baris pertama halaman, jadi aplikasi tidak muncul sama sekali
+   sampai berkas itu selesai diunduh — itulah kenapa membuka web terasa lama.
+   Sekarang ia diambil pada saat impor pertama, lalu tersimpan di singgahan peramban. */
+const XLSX_URL = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+let xlsxJanji = null;
+function siapkanXlsx(){
+  if (typeof XLSX !== "undefined") return Promise.resolve(true);
+  if (!xlsxJanji) xlsxJanji = new Promise(res => {
+    const sc = document.createElement("script");
+    sc.src = XLSX_URL;
+    sc.onload = () => res(typeof XLSX !== "undefined");
+    sc.onerror = () => { xlsxJanji = null; res(false); };
+    document.head.appendChild(sc);
+  });
+  return xlsxJanji;
+}
+
 async function readFiles(list){
   let files = [...list].filter(f => /\.(xlsx|xls|csv|txt)$/i.test(f.name));
   if (!files.length){ pesan("Tidak ada file yang bisa dibaca. Formatnya harus .xlsx, .xls, atau .csv."); return; }
@@ -6423,6 +6440,14 @@ async function readFiles(list){
   files = files.filter(f => { const k = f.name + "|" + f.size;
     if (lihat.has(k)){ kembar.push(f.name); return false; } lihat.add(k); return true; });
   IMP.buku = []; IMP.book = null; IMP.sheet = null;
+  if (files.some(f => !/\.(csv|txt)$/i.test(f.name))){
+    tampilMemuat("Menyiapkan pembaca Excel", "Sekali saja \u2014 setelah ini tersimpan di peramban Anda.");
+    if (!await siapkanXlsx()){
+      pesan("Pembaca file Excel gagal diunduh. Periksa koneksi internet Anda, lalu coba lagi \u2014 " +
+            "atau salin isinya dari Excel dan tempel di kotak tempel.");
+      renderStep1(); return;
+    }
+  }
   const total = files.reduce((a,f) => a + f.size, 0);
   const gagal = [];
   for (let i = 0; i < files.length; i++){
