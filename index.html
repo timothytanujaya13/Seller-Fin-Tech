@@ -2169,7 +2169,7 @@ const PANDUAN = {
   income: "Menerima laporan keuangan Shopee, TikTok Shop, dan Lazada — platformnya dikenali sendiri dari isi filenya, dan pilihannya bisa Anda koreksi sebelum mengimpor. Shopee: Keuangan → Penghasilan Saya → Rincian Penghasilan → Export. TikTok Shop: Keuangan → Transaksi → Unduh; tanggal pengakuannya diambil dari kolom Waktu Pembayaran Pesanan, yaitu saat dana masuk ke saldo Anda, dan kolom biaya bertingkatnya (induk Ongkir beserta sebelas kolom anaknya) tidak dihitung dua kali. Lazada: Finance → My Income → Income Report → Transaction Details; bentuknya satu baris per jenis biaya dan otomatis diringkas jadi satu baris per pesanan, baris berstatus Not Paid dilewati karena dananya belum cair. Kolom Waktu Pesanan Dibuat ikut disimpan di samping Tanggal Dana Dilepaskan. Pencatatan tetap memakai tanggal dana dilepaskan; tanggal pesanan hanya dipakai halaman Tutup Buku untuk mengenali pesanan yang melintasi batas periode. Untuk toko besar, centang Ringkas per hari saat impor — 4.800 pesanan menyusut jadi 31 baris tanpa mengubah satu pun angka laporan; detailnya tetap bisa diunduh sebagai arsip CSV. Seller Centre → Keuangan → Penghasilan Saya → Rincian Penghasilan → Export. Unggah file Income.*.xlsx apa adanya: sheet Penghasilan, baris judul bertingkat, biaya bertanda minus, dan baris Order vs Sku semuanya ditangani otomatis. Kolom Selisih memeriksa apakah seluruh rincian biaya sudah cocok dengan dana yang benar-benar masuk ke Saldo Penjual — nilainya harus nol.",
   order: "Menerima export pesanan dari ketiga platform dan mengenalinya sendiri. Kode barang Anda terbaca dari Nomor Referensi SKU (Shopee), Seller SKU (TikTok), dan sellerSku (Lazada) — kode yang sama di platform berbeda otomatis menyatu jadi satu barang. Di Lazada satu baris berarti satu unit. SUMBER TERBAIK: export Seller Centre → Pesanan → Semua Pesanan. File itu memuat Nomor Referensi SKU — kode Anda sendiri per variasi, misalnya CIBUT-SILVER-16 — sehingga harga modal dan kartu stok bisa persis per ukuran dan per warna, dan otomatis menyatu antar toko karena kodenya sama. File Income tidak bisa: di sana hanya ada ID Produk induk yang menggabung seluruh variasi jadi satu. Export Pesanan juga membawa Status Pesanan (pesanan batal otomatis tidak menimbulkan HPP) dan Returned quantity (jumlah unit retur yang sebenarnya, dipakai menggantikan taksiran). Alternatif lama: dari file Income yang sama (pilih baris bertipe Sku — satu baris = satu unit) atau dari export Pesanan. HPP dihitung dari Harga Modal per SKU di Master Produk, jadi isi kolom itu setelah mengimpor. Tanggal pengakuan HPP mengikuti tanggal pencairan pesanan yang bersangkutan, dicocokkan lewat No. Pesanan — jadi tanggal di tabel ini boleh tanggal pesanan dibuat maupun tanggal selesai, laporannya tetap sama. Pesanan yang belum punya pasangan penghasilan muncul di halaman Tutup Buku.",
   mutasi: "Menerima mutasi saldo ketiga platform. Shopee: Keuangan → Saldo Penjual → Transaksi Terakhir → Export. TikTok Shop: sheet Riwayat Penarikan di dalam file Keuangan → Transaksi (berisi Earnings harian dan Withdrawal ke bank). Lazada: Finance → Wallet → Transaction History; di sana tidak ada kolom saldo berjalan, jadi yang bisa dicocokkan adalah mutasinya, bukan saldo akhirnya. Ini rekening koran saldo penjual Anda: seluruh dana masuk dan keluar. Tabel ini TIDAK diposting ke jurnal — gunanya sebagai pembanding di halaman Rekonsiliasi Saldo, sekaligus sumber otomatis untuk Penarikan Dana.",
-  adjust: "Kolom Diperlakukan Sebagai menentukan akun tujuannya, diisi otomatis dari tipe penyesuaiannya saat impor — kompensasi masuk Pendapatan Lain-lain, pengembalian barang mengurangi Penjualan, sedangkan koreksi biaya seperti Komisi AMS masuk akun bebannya sendiri. Ubah manual bila ada yang salah tebak. Penyesuaian yang dibayarkan marketplace di luar rincian per pesanan: kompensasi pesanan hilang, kompensasi jasa kirim, dan pengembalian barang/dana setelah dana dilepaskan. Di file Income Shopee letaknya di sheet Adjustment — bukan di sheet Penghasilan — dan jumlahnya TIDAK termasuk dalam Total yang Dilepas. Inilah penyebab paling umum selisih antara pembukuan dan mutasi Saldo Penjual.",
+  adjust: "Penyesuaian yang dibayarkan marketplace di luar rincian per pesanan: kompensasi pesanan hilang, penggantian ongkir, dan pengembalian barang atau dana setelah dana dilepaskan. Jumlahnya TIDAK termasuk dalam total yang dilepas ke saldo Anda, dan inilah penyebab paling umum pembukuan tidak cocok dengan mutasi Saldo Penjual. TIDAK PERLU DIIMPOR SENDIRI. Begitu Anda mengimpor Penghasilan Marketplace, penyesuaian di berkas yang sama ikut terpanen otomatis \u2014 dari sheet Adjustment untuk Shopee, dari baris yang Jenis transaksi-nya bukan Pesanan untuk TikTok, sedangkan Lazada memang tidak punya baris terpisah karena Reversal Item Price dan Reversal Commission sudah ikut terhitung saat laporannya diringkas. Berkas yang sama boleh diimpor berulang kali; baris yang sudah pernah masuk dikenali dan dilewati, jadi tidak pernah terhitung dua kali. Impor manual lewat tombol di halaman ini tetap tersedia untuk berkas yang bentuknya tidak dikenali. Kolom Diperlakukan Sebagai menentukan akun tujuannya dan ditebak dari kalimat keterangannya \u2014 kompensasi masuk Pendapatan Lain-lain, pengembalian barang mengurangi Penjualan, koreksi biaya masuk akun bebannya sendiri. Tebakan itu sengaja bisa Anda ubah: periksa sekilas setiap kali ada baris baru.",
   iklan: "Halaman ini HANYA untuk iklan yang Anda bayar sendiri DI LUAR penghasilan marketplace — misalnya isi saldo iklan lewat transfer bank atau kartu kredit. Kalau saldo iklan Anda terisi otomatis dari penghasilan, biayanya sudah masuk lewat kolom biaya iklan di Penghasilan Marketplace, jadi jangan diinput lagi di sini. Shopee dan TikTok memotong biaya iklannya langsung dari penghasilan (Shopee: Isi Saldo Otomatis, TikTok: Biaya Iklan GMV Max), jadi keduanya sudah otomatis. Lazada Sponsored Solutions umumnya ditagih terpisah di luar laporan penghasilan — itulah yang perlu Anda catat di sini, kalau tidak biaya iklan Lazada tidak akan pernah masuk pembukuan dan laba Lazada Anda kelihatan terlalu bagus. Sumber datanya: Seller Centre masing-masing platform, bagian Iklan atau Sponsored Solutions.",
   saldo: "Seller Centre → Keuangan → Saldo Penjual → Riwayat Penarikan. Ini yang memindahkan uang dari Saldo Shopee ke rekening bank Anda.",
   beli: "Dari nota atau faktur supplier, bukan dari marketplace. Satu faktur boleh memuat banyak SKU: isi kepalanya sekali (tanggal, nomor faktur, supplier, cara bayar) lalu tambahkan barisnya satu per satu. Ongkos masuk cukup diisi sekali di tingkat faktur, nanti dibagi ke tiap baris menurut nilai barangnya. Panel Usulan Harga Modal di atas memperlihatkan berapa harga modal seharusnya menurut pembelian ini dan berapa dampaknya ke laba — tetapi HPP Anda tetap memakai Harga Modal lama sampai Anda menekan Terapkan.",
@@ -6466,7 +6466,7 @@ const kunciGanti = (key, r) => platDari(r) + "|" + String(r.toko || "") + "|" + 
 let IMP = null;
 
 function openImport(key){
-  IMP = { key, buku:[], book:null, sheet:null, plat:null, platAuto:null, platSkor:0, lzd:null, resepLebar:null, rows:null, headerIdx:0, bentukBeda:0, labels:[], map:{}, flip:{}, filterCol:-1, filterVal:"", ringkas:null, gabung:true, sheets:[], mode:null, bentrok:0 };
+  IMP = { key, buku:[], book:null, sheet:null, plat:null, platAuto:null, platSkor:0, lzd:null, resepLebar:null, rows:null, headerIdx:0, bentukBeda:0, labels:[], map:{}, flip:{}, filterCol:-1, filterVal:"", filterNot:false, ringkas:null, gabung:true, sheets:[], mode:null, bentrok:0 };
   document.getElementById("dlg-t").textContent = "Impor data — " + TABLES[key].label;
   renderStep1();
   dlg.showModal();
@@ -6865,6 +6865,16 @@ const PETA_TEPAT = {
       penyesuaian:["jumlah penyesuaian"],
       total:["jumlah penyelesaian pembayaran"],
     },
+    /* Penyesuaian TikTok tinggal di sheet Detail pesanan yang sama dengan
+       penghasilan; yang membedakan cuma kolom Jenis transaksi, dan nilainya
+       ada di Jumlah penyesuaian \u2014 bukan di Total Pendapatan, yang untuk
+       baris seperti ini selalu nol. */
+    adjust: {
+      tgl:["waktu pembayaran pesanan","waktu pemesanan"],
+      ket:["jenis transaksi"],
+      no:["id pesanan terkait","id pesanan penyesuaian"],
+      jumlah:["jumlah penyesuaian"],
+    },
     mutasi: { tgl:["waktu keberhasilan"], tipe:["jenis transaksi"], ket:["status"],
               no:["id referensi"], jumlah:["total"], saldo:[] },
     order: {
@@ -6949,12 +6959,24 @@ function detectFilter(labels, rows, hi, key){
       return { col: L.i, val: vals.find(v => norm(v) === norm(want)) || vals[0] || "" };
     }
   }
-  // file mutasi saldo: satu file berisi beberapa tipe transaksi
+  /* Satu file berisi beberapa jenis transaksi. Shopee menamai kolomnya "Tipe
+     Transaksi", TikTok "Jenis transaksi" — dulu hanya yang pertama dikenali,
+     sehingga baris penyesuaian TikTok tidak pernah bisa dipisahkan. */
   for (const L of labels){
-    if (!/tipe transaksi/.test(norm(L.name))) continue;
+    if (!/tipe transaksi|jenis transaksi/.test(norm(L.name))) continue;
     const vals = nilai(L.i);
-    if (vals.length < 2 || vals.length > 12) continue;
-    const mau = { adjust:/penyesuaian/, saldo:/penarikan/, iklan:/iklan|saldo penjual/ }[key];
+    if (vals.length < 2 || vals.length > 16) continue;
+    /* Untuk Penyesuaian, menyebut satu nilai yang diambil tidak cukup: TikTok
+       memakai beberapa nama sekaligus (Penggantian Biaya Logistik, Penggantian
+       dana oleh platform, Penyesuaian komisi platform). Yang pasti hanya satu —
+       baris pesanan biasa bernama "Pesanan". Jadi yang dibuang, bukan yang diambil. */
+    const pesanan = vals.find(x => /^(pesanan|order|orders)$/.test(norm(x)));
+    if (key === "adjust"){
+      const adaSesuai = vals.some(x => /penyesuaian|penggantian|adjustment|kompensasi|refund/.test(norm(x)));
+      if (pesanan && adaSesuai) return { col: L.i, val: pesanan, not: true };
+    }
+    if ((key === "income" || key === "order") && pesanan) return { col: L.i, val: pesanan };
+    const mau = { adjust:/penyesuaian|penggantian/, saldo:/penarikan|withdraw/, iklan:/iklan|saldo penjual/ }[key];
     const v = mau ? vals.find(x => mau.test(norm(x))) : "";
     return { col: L.i, val: v || "" };
   }
@@ -6981,13 +7003,14 @@ function refreshMapping(){
   if (IMP.key === "order" && !(IMP.map.tgl || []).length && (IMP.map.tglPesan || []).length)
     IMP.map.tgl = [...IMP.map.tglPesan];
   const f = detectFilter(IMP.labels, IMP.rows, IMP.headerIdx, IMP.key);
-  IMP.filterCol = f.col; IMP.filterVal = f.val;
+  IMP.filterCol = f.col; IMP.filterVal = f.val; IMP.filterNot = !!f.not;
   recalcFlip();
 }
 function dataRows(){
   const d = IMP.rows.slice(IMP.headerIdx + 1).filter(r => r.some(c => String(c).trim()));
   if (IMP.filterCol < 0 || !IMP.filterVal) return d;
-  return d.filter(r => String(r[IMP.filterCol] ?? "").trim() === IMP.filterVal);
+  const sama = r => String(r[IMP.filterCol] ?? "").trim() === IMP.filterVal;
+  return d.filter(IMP.filterNot ? (r => !sama(r)) : sama);
 }
 const rawSum = (rows, cols) => rows.reduce((s,r) => s + cols.reduce((a,c) => a + num(r[c]), 0), 0);
 /* Tanda diputuskan per FIELD, bukan per kolom.
@@ -7022,6 +7045,83 @@ function recalcFlip(){
 const adaFlip = k => Object.values(IMP.flip[k] || {}).some(Boolean);
 const fieldVal = (row, k) => (IMP.map[k] || []).reduce((a,c) =>
   a + ((IMP.flip[k] && IMP.flip[k][c]) ? -num(row[c]) : num(row[c])), 0);
+
+/* Menebak akun tujuan sebuah penyesuaian dari kalimat keterangannya. Dipakai dua
+   tempat: saat mengimpor tabel Penyesuaian langsung, dan saat penyesuaian dipanen
+   otomatis dari file Penghasilan. */
+function tebakAkunPenyesuaian(r){
+  const t = norm(r.ket || ""), v = num(r.jumlah);
+  return (v > 0 && /hilang|raib|kompensasi|ganti rugi|penggantian/.test(t)) ? "8-110"
+    : /komisi|ams|afilias/.test(t) ? "6-160"
+    : /iklan/.test(t) ? "6-150"
+    : /administrasi|platform/.test(t) ? "6-100"
+    : /layanan|transaksi/.test(t) ? "6-110"
+    : (v < 0 && /ongkir|kirim|logistik/.test(t)) ? "6-140"
+    : (v >= 0 ? "8-100" : "4-300");
+}
+
+/* ============================ panen penyesuaian ============================
+   Dulu penjual harus mengimpor file yang sama DUA KALI — sekali ke Penghasilan,
+   sekali lagi ke Penyesuaian — dan aturannya berbeda di tiap platform: Shopee
+   dari sheet lain, TikTok dari baris lain di sheet yang sama, Lazada tidak perlu
+   sama sekali. Tiga aturan yang harus diingat manusia adalah tiga kesempatan
+   untuk lupa, dan yang terlupa itu justru penyebab paling umum pembukuan tidak
+   cocok dengan Saldo Penjual. Jadi sekarang mesin yang mengingatnya.
+
+   Sengaja berhati-hati: hanya memanen dari sheet yang namanya memang menyebut
+   penyesuaian, atau dari baris yang jelas-jelas ditandai bukan pesanan. Kalau
+   tidak ada penanda yang meyakinkan, tidak memanen apa pun — lebih baik penjual
+   mengimpor sendiri daripada aplikasi mengarang baris yang tidak pernah ada. */
+function panenPenyesuaian(platImp, tokoImp){
+  const kosong = { baris:[], nilai:0, dobel:0, sumber:[] };
+  if (platImp === "lazada") return kosong;   // sudah ikut terhitung saat diringkas
+  const hasil = [];
+  let dobel = 0;
+  const sumber = new Set();
+  const adaKunci = new Set((S.adjust || []).map(x =>
+    [platDari(x), x.toko || "", x.tgl, String(x.no || "").trim(), norm(x.ket || ""), num(x.jumlah)].join("|")));
+
+  for (const b of IMP.buku){
+    const daftar = b.book ? b.book.SheetNames : [null];
+    for (const nm of daftar){
+      let rows;
+      try { rows = b.book ? bacaSheet(b.book, nm) : b.csv; } catch(e){ continue; }
+      if (!rows || rows.length < 2) continue;
+      const hi = guessHeaderRow(rows);
+      const L = buildLabels(rows, hi);
+      const peta = petaTepat(L, "adjust", platImp) || autoMap(L, "adjust", platImp);
+      if (!peta || !(peta.tgl || []).length || !(peta.jumlah || []).length) continue;
+
+      const sheetSesuai = /penyesuaian|adjustment/.test(norm(String(nm || "")));
+      const f = detectFilter(L, rows, hi, "adjust");
+      const punyaSaring = f.col >= 0 && !!f.val;
+      /* Dua pintu saja, dan keduanya harus meyakinkan. */
+      if (!sheetSesuai && !(punyaSaring && f.not)) continue;
+
+      let data = rows.slice(hi + 1).filter(r => r.some(c => String(c).trim()));
+      if (punyaSaring){
+        const sama = r => String(r[f.col] ?? "").trim() === f.val;
+        data = data.filter(f.not ? (r => !sama(r)) : sama);
+      }
+      const teks = (row, k) => { const c = (peta[k] || [])[0]; return c == null ? "" : String(row[c] ?? "").trim(); };
+      const angka = (row, k) => (peta[k] || []).reduce((a,c) => a + num(row[c]), 0);
+      for (const row of data){
+        const tgl = parseDate(row[(peta.tgl || [])[0]]);
+        const jumlah = angka(row, "jumlah");
+        if (!tgl || !jumlah) continue;             // baris tanpa tanggal atau bernilai nol bukan penyesuaian
+        const r = { tgl, ket: teks(row, "ket"), no: teks(row, "no"), jumlah,
+                    plat: platImp, toko: tokoImp || "" };
+        r.kode = tebakAkunPenyesuaian(r);
+        const kunci = [platImp, r.toko, r.tgl, r.no, norm(r.ket), r.jumlah].join("|");
+        if (adaKunci.has(kunci)){ dobel++; continue; }
+        adaKunci.add(kunci);
+        hasil.push(r);
+        sumber.add(nm ? String(nm) : (b.nama || "file"));
+      }
+    }
+  }
+  return { baris: hasil, nilai: hasil.reduce((a,r) => a + num(r.jumlah), 0), dobel, sumber: [...sumber] };
+}
 
 /* ---------- peringkasan ---------- */
 const RINGKAS = {
@@ -7168,12 +7268,16 @@ function renderStep2(){
             ${IMP.rows.slice(0, Math.min(IMP.rows.length, 25)).map((r,i) =>
               `<option value="${i}"${i===IMP.headerIdx?" selected":""}>Baris ${i+1} — ${esc(r.filter(Boolean).slice(0,3).join(" | ").slice(0,40))}</option>`).join("")}
           </select></label>
-        ${IMP.filterCol >= 0 ? `<label>Ambil baris bertipe
+        ${IMP.filterCol >= 0 ? (() => {
+          const vals = [...new Set(IMP.rows.slice(IMP.headerIdx+1)
+            .map(r => String(r[IMP.filterCol] ?? "").trim()).filter(Boolean))];
+          const kini = (IMP.filterNot ? "!" : "") + IMP.filterVal;
+          return `<label>Ambil baris bertipe
           <select id="fvsel" style="width:auto;display:inline-block;margin-left:5px">
-            <option value=""${IMP.filterVal===""?" selected":""}>— semua baris —</option>
-            ${[...new Set(IMP.rows.slice(IMP.headerIdx+1).map(r => String(r[IMP.filterCol] ?? "").trim()).filter(Boolean))]
-              .map(v => `<option${v===IMP.filterVal?" selected":""}>${esc(v)}</option>`).join("")}
-          </select></label>` : ""}
+            <option value=""${kini===""?" selected":""}>— semua baris —</option>
+            ${vals.map(v => `<option value="${esc(v)}"${kini===v?" selected":""}>${esc(v)}</option>`).join("")}
+            ${vals.map(v => `<option value="!${esc(v)}"${kini==="!"+v?" selected":""}>— semua KECUALI ${esc(v)} —</option>`).join("")}
+          </select></label>`; })() : ""}
       </div>
     </div>
     ${["income","order","adjust","mutasi","iklan","saldo","beli","ops","pajak"].includes(key) ? `
@@ -7288,7 +7392,12 @@ function renderStep2(){
   if (gb) gb.onchange = () => { IMP.gabung = gb.checked; IMP.ringkas = null; loadSheet(); };
   document.getElementById("hdrsel").onchange = e => { IMP.headerIdx = +e.target.value; refreshMapping(); renderStep2(); };
   const fv = document.getElementById("fvsel");
-  if (fv) fv.onchange = e => { IMP.filterVal = e.target.value; recalcFlip(); renderStep2(); };
+  if (fv) fv.onchange = e => {
+    const v = e.target.value;
+    IMP.filterNot = v.startsWith("!");
+    IMP.filterVal = IMP.filterNot ? v.slice(1) : v;
+    recalcFlip(); renderStep2();
+  };
   document.getElementById("dlg-b").querySelectorAll("[data-add]").forEach(sel => {
     sel.onchange = () => {
       const k = sel.dataset.add, c = +sel.value;
@@ -7421,17 +7530,7 @@ async function doImport(rows){
   for (const r of out) r.plat = platImp;
   if (tokoImp) for (const r of out) r.toko = tokoImp;
   if (tokoImp && !(S.toko || []).includes(tokoImp)) (S.toko ||= []).push(tokoImp);
-  if (key === "adjust") for (const r of out){
-    if (r.kode) continue;
-    const t = norm(r.ket || ""), v = num(r.jumlah);
-    r.kode = (v > 0 && /hilang|raib|kompensasi|ganti rugi/.test(t)) ? "8-110"
-      : /komisi|ams|afilias/.test(t) ? "6-160"
-      : /iklan/.test(t) ? "6-150"
-      : /administrasi|platform/.test(t) ? "6-100"
-      : /layanan|transaksi/.test(t) ? "6-110"
-      : (v < 0 && /ongkir|kirim|logistik/.test(t)) ? "6-140"
-      : (v >= 0 ? "8-100" : "4-300");
-  }
+  if (key === "adjust") for (const r of out){ if (!r.kode) r.kode = tebakAkunPenyesuaian(r); }
   if (key === "jurnal") out = out.map(r => ({
     tgl: r.tgl, ket: r.ket || "",
     baris: [{ kode: r.debit || "7-180", d: num(r.jumlah), k: 0 },
@@ -7504,6 +7603,15 @@ async function doImport(rows){
       S.produk.push({ sku:id, nama:r.nama || "", kategori:"", modal:0, jual:num(r.harga), stokAwal:0 });
     }
   }
+  /* Penyesuaian dipanen dari berkas yang sama, supaya tidak perlu impor kedua. */
+  let panen = null;
+  if (key === "income"){
+    try { panen = panenPenyesuaian(platImp, tokoImp); } catch(e){ panen = null; }
+    if (panen && panen.baris.length){
+      S.adjust = (S.adjust || []).concat(panen.baris);
+      if (tokoImp && !(S.toko || []).includes(tokoImp)) (S.toko ||= []).push(tokoImp);
+    }
+  }
   dlg.close(); touch();
   if (detailRows){
     /* jangan pernah menggantung: kalau 25 detik tidak ada jawaban, lanjut saja */
@@ -7549,6 +7657,16 @@ async function doImport(rows){
       (lintasBulan ? "\n" + lintasBulan + " pesanan di file ini dibuat pada bulan sebelumnya — dicatat untuk halaman Tutup Buku." : "") +
       (perUnit ? "\nSetiap baris dihitung 1 unit." : "") +
       (added ? "\n" + added + " SKU baru ditambahkan ke Master Produk — isi Harga Modal-nya agar HPP terhitung." : "") +
+      (panen && panen.baris.length
+        ? "\n\n" + RE_ID.format(panen.baris.length) + " baris PENYESUAIAN ikut terpanen dari berkas yang sama" +
+          " (" + rpS(panen.nilai) + ") \u2014 kompensasi, penggantian ongkir, dan pengembalian dana yang" +
+          " dibayar marketplace di luar rincian per pesanan. Angkanya sudah masuk tabel Penyesuaian" +
+          " Marketplace; tidak perlu mengimpor berkas ini untuk kedua kalinya." +
+          (panen.dobel ? " " + RE_ID.format(panen.dobel) + " baris dilewati karena sudah pernah masuk." : "")
+        : (panen && panen.dobel
+          ? "\n\nPenyesuaian di berkas ini sudah pernah masuk \u2014 " + RE_ID.format(panen.dobel) +
+            " baris dilewati supaya tidak terhitung dua kali."
+          : "")) +
       rincianLewat +
       (skipped ? "\n\nSemua baris yang dilewati bisa Anda unduh dan periksa sendiri." : "");
     const tombol = skipped
