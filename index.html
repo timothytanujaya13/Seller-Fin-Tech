@@ -372,6 +372,22 @@ tbody tr.sub:hover td{background:var(--surface3)}
 /* Baris laporan yang punya penjelasan: garis bawah putus-putus yang halus —
    cukup untuk memberi tahu "ada yang bisa dilihat di sini", tidak cukup untuk
    mengganggu orang yang cuma ingin membaca angkanya. */
+/* katalog: galeri template */
+.ktgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px;margin-bottom:20px}
+.ktgal{all:unset;box-sizing:border-box;cursor:pointer;display:flex;flex-direction:column;gap:7px;padding:10px;
+  border:1.5px solid var(--line);border-radius:12px;background:var(--surface);transition:border-color .12s,transform .12s}
+.ktgal:hover{border-color:var(--line2);transform:translateY(-1px)}
+.ktgal:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.ktgal.on{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft, rgba(0,120,90,.15))}
+.ktgn{display:flex;justify-content:space-between;align-items:center;gap:6px;font-size:13px;color:var(--ink)}
+.ktgn em{font-style:normal;font-size:10.5px;font-weight:600;color:var(--accent);background:var(--accent-soft, rgba(0,120,90,.12));padding:2px 7px;border-radius:99px}
+.ktgc{font-size:11.5px;color:var(--ink3);line-height:1.4}
+.ktj{font-size:15px;font-weight:600;color:var(--ink)}
+.ktlogo{display:flex;gap:14px;align-items:center}
+.ktlogo-pv{width:190px;height:96px;flex:0 0 190px;border:1px dashed var(--line2);border-radius:10px;
+  background:repeating-conic-gradient(#f3f3f3 0 25%,#fff 0 50%) 0 0/14px 14px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.ktlogo-pv img{object-fit:contain;max-width:180px;max-height:88px}
+.ktlogo-pv span{font-size:11.5px;color:#888}
 /* katalog: foto kecil di tabel, dan lapisan pratinjau layar penuh */
 .ktfoto{width:52px;height:52px;border-radius:7px;overflow:hidden;background:var(--surface2);
   border:1px solid var(--line);display:flex;align-items:center;justify-content:center;
@@ -2211,8 +2227,8 @@ const PANDUAN = {
   order: "Menerima export pesanan dari ketiga platform dan mengenalinya sendiri. Kode barang Anda terbaca dari Nomor Referensi SKU (Shopee), Seller SKU (TikTok), dan sellerSku (Lazada) — kode yang sama di platform berbeda otomatis menyatu jadi satu barang. Di Lazada satu baris berarti satu unit. SUMBER TERBAIK: export Seller Centre → Pesanan → Semua Pesanan. File itu memuat Nomor Referensi SKU — kode Anda sendiri per variasi, misalnya CIBUT-SILVER-16 — sehingga harga modal dan kartu stok bisa persis per ukuran dan per warna, dan otomatis menyatu antar toko karena kodenya sama. File Income tidak bisa: di sana hanya ada ID Produk induk yang menggabung seluruh variasi jadi satu. Export Pesanan juga membawa Status Pesanan (pesanan batal otomatis tidak menimbulkan HPP) dan Returned quantity (jumlah unit retur yang sebenarnya, dipakai menggantikan taksiran). Alternatif lama: dari file Income yang sama (pilih baris bertipe Sku — satu baris = satu unit) atau dari export Pesanan. HPP dihitung dari Harga Modal per SKU di Master Produk, jadi isi kolom itu setelah mengimpor. Tanggal pengakuan HPP mengikuti tanggal pencairan pesanan yang bersangkutan, dicocokkan lewat No. Pesanan — jadi tanggal di tabel ini boleh tanggal pesanan dibuat maupun tanggal selesai, laporannya tetap sama. Pesanan yang belum punya pasangan penghasilan muncul di halaman Tutup Buku.",
   mutasi: "Menerima mutasi saldo ketiga platform. Shopee: Keuangan → Saldo Penjual → Transaksi Terakhir → Export. TikTok Shop: sheet Riwayat Penarikan di dalam file Keuangan → Transaksi (berisi Earnings harian dan Withdrawal ke bank). Lazada: Finance → Wallet → Transaction History; di sana tidak ada kolom saldo berjalan, jadi yang bisa dicocokkan adalah mutasinya, bukan saldo akhirnya. Ini rekening koran saldo penjual Anda: seluruh dana masuk dan keluar. Tabel ini TIDAK diposting ke jurnal — gunanya sebagai pembanding di halaman Rekonsiliasi Saldo, sekaligus sumber otomatis untuk Penarikan Dana.",
   adjust: "Penyesuaian yang dibayarkan marketplace di luar rincian per pesanan: kompensasi pesanan hilang, penggantian ongkir, dan pengembalian barang atau dana setelah dana dilepaskan. Jumlahnya TIDAK termasuk dalam total yang dilepas ke saldo Anda, dan inilah penyebab paling umum pembukuan tidak cocok dengan mutasi Saldo Penjual. TIDAK PERLU DIIMPOR SENDIRI. Begitu Anda mengimpor Penghasilan Marketplace, penyesuaian di berkas yang sama ikut terpanen otomatis \u2014 dari sheet Adjustment untuk Shopee, dari baris yang Jenis transaksi-nya bukan Pesanan untuk TikTok, sedangkan Lazada memang tidak punya baris terpisah karena Reversal Item Price dan Reversal Commission sudah ikut terhitung saat laporannya diringkas. Berkas yang sama boleh diimpor berulang kali; baris yang sudah pernah masuk dikenali dan dilewati, jadi tidak pernah terhitung dua kali. Impor manual lewat tombol di halaman ini tetap tersedia untuk berkas yang bentuknya tidak dikenali. Kolom Diperlakukan Sebagai menentukan akun tujuannya dan ditebak dari kalimat keterangannya \u2014 kompensasi masuk Pendapatan Lain-lain, pengembalian barang mengurangi Penjualan, koreksi biaya masuk akun bebannya sendiri. Tebakan itu sengaja bisa Anda ubah: periksa sekilas setiap kali ada baris baru.",
-  katalog: "Daftar SKU yang bisa masuk katalog grosir Anda, lengkap dengan foto, harga, dan stok. Tekan Impor data katalog lalu pilih berkas Excel katalog lama — sheet Database Katalog dan PENGATURAN-nya terbaca langsung. Mengimpor ulang dengan nomor SKU yang sama akan memperbarui baris itu, bukan membuat baris kembar. Foto boleh berupa link (BigSeller dan sejenisnya) atau diunggah dari perangkat; untuk ratusan foto sekaligus, pakai Unggah foto massal dengan nama berkas persis nomor SKU-nya. Kolom Di katalog memperlihatkan harga dan stok yang benar-benar tercetak — label app berarti angkanya diambil dari pembukuan, bukan dari berkas impor. Setelah itu tekan Buat katalog, periksa pratinjaunya, lalu Cetak / Simpan PDF.",
-  katalogSet: "Seluruh isi sheet PENGATURAN di katalog Excel lama Anda ada di sini, ditambah satu hal baru: asal harga dan stok. Harga boleh dari berkas impor, dari Harga Modal dikali markup, atau dari Harga Jual Normal di Master Produk. Stok boleh dari berkas impor atau dari stok akhir pembukuan. Setiap perubahan langsung tersimpan, dan angka di kanan atas memberi tahu berapa SKU dan halaman yang akan keluar.",
+  katalog: "Daftar produk yang bisa masuk katalog Anda, lengkap dengan foto, harga, dan stok — untuk jenis barang apa pun. Mulai dengan Unduh template, isi di Excel, lalu Impor data katalog. Berkas katalog Excel lama pun bisa langsung diimpor tanpa diubah. Mengimpor ulang dengan nomor SKU yang sama akan memperbarui baris itu, bukan membuat baris kembar. Foto boleh berupa link atau diunggah dari perangkat; untuk ratusan foto sekaligus, pakai Unggah foto massal dengan nama berkas persis nomor SKU-nya. Kolom Di katalog memperlihatkan harga dan stok yang benar-benar tercetak — label app berarti angkanya diambil dari pembukuan, bukan dari berkas impor. Pilih tampilan di Pengaturan Katalog (ada 12 template), lalu tekan Buat katalog, periksa pratinjaunya, dan Cetak / Simpan PDF.",
+  katalogSet: "Pilih satu dari 12 template — masing-masing punya warna, sampul, dan susunan halaman sendiri, dan semuanya bisa dipakai untuk produk apa pun. Di bawahnya: tata letak, identitas sampul, kontak, aturan produk mana yang masuk, dan asal harga serta stok. Harga boleh dari berkas impor, dari Harga Modal dikali markup, atau dari Harga Jual Normal di Master Produk. Stok boleh dari berkas impor atau dari stok akhir pembukuan. Setiap perubahan langsung tersimpan, dan angka di kanan atas memberi tahu berapa SKU dan halaman yang akan keluar.",
   iklan: "Halaman ini HANYA untuk iklan yang Anda bayar sendiri DI LUAR penghasilan marketplace — misalnya isi saldo iklan lewat transfer bank atau kartu kredit. Kalau saldo iklan Anda terisi otomatis dari penghasilan, biayanya sudah masuk lewat kolom biaya iklan di Penghasilan Marketplace, jadi jangan diinput lagi di sini. Shopee dan TikTok memotong biaya iklannya langsung dari penghasilan (Shopee: Isi Saldo Otomatis, TikTok: Biaya Iklan GMV Max), jadi keduanya sudah otomatis. Lazada Sponsored Solutions umumnya ditagih terpisah di luar laporan penghasilan — itulah yang perlu Anda catat di sini, kalau tidak biaya iklan Lazada tidak akan pernah masuk pembukuan dan laba Lazada Anda kelihatan terlalu bagus. Sumber datanya: Seller Centre masing-masing platform, bagian Iklan atau Sponsored Solutions.",
   saldo: "Seller Centre → Keuangan → Saldo Penjual → Riwayat Penarikan. Ini yang memindahkan uang dari Saldo Shopee ke rekening bank Anda.",
   beli: "Dari nota atau faktur supplier, bukan dari marketplace. Satu faktur boleh memuat banyak SKU: isi kepalanya sekali (tanggal, nomor faktur, supplier, cara bayar) lalu tambahkan barisnya satu per satu. Ongkos masuk cukup diisi sekali di tingkat faktur, nanti dibagi ke tiap baris menurut nilai barangnya. Panel Usulan Harga Modal di atas memperlihatkan berapa harga modal seharusnya menurut pembelian ini dan berapa dampaknya ke laba — tetapi HPP Anda tetap memakai Harga Modal lama sampai Anda menekan Terapkan.",
@@ -2992,18 +3008,17 @@ function bukaGabung(){
    persis seperti yang sudah Anda kenal — hanya saja tidak perlu lagi membuka
    Excel, menjalankan makro, lalu mencari file HTML-nya.
 
-   Datanya berdiri sendiri (tabel katalog), karena SKU katalog grosir seperti
-   1BOX-...-(16-19) bukan SKU marketplace. Harga dan stok boleh diambil dari file
+   Datanya berdiri sendiri (tabel katalog), karena SKU katalog — paket, box,
+   atau bundel grosir — sering bukan SKU marketplace. Harga dan stok boleh diambil dari file
    impor atau dari data aplikasi — dipilih di halaman Pengaturan Katalog. */
 const BUCKET_KATALOG = "katalog";
 const KATALOG_BAWAAN = {
   tema:"noir",
   brand:"", sub:"KATALOG PRODUK", eyebrow:"", edisi:"",
   wa:"", ig:"", tt:"", fb:"", catatan1:"", catatan2:"", labelKanan:"",
-  logo:"", logoTinggi:22,
+  logo:"", logoUkuran:"sedang", logoRasio:1,
   mode:"stok", katFilter:"", urut:"sku", urutKat:"",
-  aturanKat:"GOLD=-GOLD; SILVER=-SILVER,-SLVR; ROSE GOLD=-RG-,ROSE; HITAM=-HITAM,BLACK",
-  katBawaan:"MODEL LAINNYA",
+  aturanKat:"", katBawaan:"LAINNYA", teksKartu:"keduanya",
   kolom:4, baris1:3, baris2:4, tampilStok:false, px:400, namaFile:"Katalog",
   sumberHarga:"impor", markup:1.4, sesuaiPersen:0, sumberStok:"impor", cadangan:true,
 };
@@ -3140,234 +3155,628 @@ function katalogTerpilih(k){
   items.sort((a, b) => a.kunci < b.kunci ? -1 : a.kunci > b.kunci ? 1 : 0);
   return { items, alasan };
 }
-/* Jumlah halaman: sampul + tiap kategori (halaman pertama memuat lebih sedikit
-   karena ada pita judulnya) + penutup. */
-function hitungHalaman(items, k){
-  const per1 = Math.max(1, num(k.kolom)) * Math.max(1, num(k.baris1));
-  const per2 = Math.max(1, num(k.kolom)) * Math.max(1, num(k.baris2));
-  const jml = new Map();
-  for (const it of items) jml.set(it.kat, (jml.get(it.kat) || 0) + 1);
-  let hal = 2;
-  for (const n of jml.values()) hal += 1 + Math.ceil(Math.max(0, n - per1) / per2);
-  return { hal, kategori: jml.size };
-}
+/* ============================ mesin template katalog ============================
+   Tiap template bukan sekadar ganti warna: tata letak sampul, cara judul kategori
+   ditaruh, bentuk kartu produk, bahkan jumlah produk per halaman boleh berbeda.
+   Setiap template menyediakan:
+     css(n)            gaya khususnya, n = jumlah kolom
+     sampul(c)         halaman depan
+     halaman(c, h)     satu halaman isi: h = { kat, jml, no, pertama, kartu:[html], nomorKat }
+     kartu(c, it, i)   satu kartu produk
+     penutup(c)        halaman terakhir
+     kapasitas(c, pertama)   (opsional) produk per halaman, kalau tata letaknya punya aturan sendiri
+     mini              warna untuk gambar kecil di galeri pilihan template
+   c berisi pengaturan yang sudah siap pakai: nama brand, kontak, logo, dsb. */
+const FONT = f => `@import url('https://fonts.googleapis.com/css2?${f}&display=swap');`;
+const DASAR_KATALOG = "*{margin:0;padding:0;box-sizing:border-box}" +
+  "body{background:#7a7a7a;-webkit-print-color-adjust:exact;print-color-adjust:exact}" +
+  ".page{width:210mm;height:296.6mm;position:relative;margin:8mm auto;box-shadow:0 2mm 8mm rgba(0,0,0,.35);" +
+  "display:flex;flex-direction:column;overflow:hidden}" +
+  ".body{flex:1;min-height:0;position:relative}" +
+  ".card{break-inside:avoid;page-break-inside:avoid;min-width:0}" +
+  ".ph{aspect-ratio:1/1;overflow:hidden;display:flex;align-items:center;justify-content:center;position:relative}" +
+  ".ph img{width:100%;height:100%;object-fit:cover;display:block}" +
+  ".noimg{font-size:6.5pt;letter-spacing:.14em;text-transform:uppercase;opacity:.55}" +
+  ".logo{display:block;object-fit:contain;margin:0 auto}" +
+  ".clamp2{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}" +
+  "@media print{@page{size:A4;margin:0}body{background:none}" +
+  ".page{margin:0;box-shadow:none;break-after:page;page-break-after:always}" +
+  ".page:last-child{break-after:auto;page-break-after:auto}}";
 
-/* ---------- gaya kedua tema, disalin dari makro ---------- */
-function gayaKatalog(tema, nCols){
-  const cetak = "@media print{@page{size:A4;margin:0}body{background:none}" +
-    ".page{margin:0;box-shadow:none;break-after:page;page-break-after:always}" +
-    ".page:last-child{break-after:auto;page-break-after:auto}}";
-  if (tema === "putih") return "@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&family=Lato:wght@300;400;700&display=swap');" +
-    "*{margin:0;padding:0;box-sizing:border-box}" +
-    ":root{--bg:#F6F3EB;--card:#FBF9F3;--ink:#17150F;--soft:#6E6A5E;--hair:#D6CFBC;--hair2:#E4DECE;--line:#17150F;" +
-    "--serif:'Playfair Display',Georgia,'Times New Roman',serif;--sans:'Lato','Segoe UI',Helvetica,Arial,sans-serif;}" +
-    "body{background:#8b8b8b;font-family:var(--sans);color:var(--ink);-webkit-print-color-adjust:exact;print-color-adjust:exact}" +
-    ".page{width:210mm;height:296.6mm;background:var(--bg);position:relative;padding:15mm 16mm 12mm;" +
-    "margin:8mm auto;box-shadow:0 2mm 8mm rgba(0,0,0,.35);display:flex;flex-direction:column;overflow:hidden}" +
-    ".body{flex:1;min-height:0;position:relative;z-index:2}" +
-    ".deco{position:absolute;top:8mm;right:8mm;bottom:8mm;left:8mm;border:.25mm solid var(--hair);pointer-events:none;z-index:0}" +
-    ".deco::before{content:'';position:absolute;top:1.3mm;right:1.3mm;bottom:1.3mm;left:1.3mm;border:.25mm solid var(--hair2)}" +
-    ".mark{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:var(--serif);font-size:150mm;line-height:1;color:var(--ink);opacity:.028;z-index:0;pointer-events:none}" +
-    ".foot{position:relative;z-index:2;border-top:.35mm solid var(--hair);padding-top:2.5mm;display:flex;justify-content:space-between;align-items:baseline;font-size:6.6pt;letter-spacing:.18em;color:var(--soft)}" +
-    ".foot .pg{font-family:var(--serif);letter-spacing:.1em;font-size:8pt}" +
-    ".kat{display:flex;align-items:baseline;justify-content:space-between;border-bottom:1.1mm double var(--line);padding-bottom:2mm;margin-bottom:6mm}" +
-    ".kat h2{font-family:var(--serif);font-weight:500;font-size:26pt;letter-spacing:.06em}" +
-    ".kat span{font-size:7pt;letter-spacing:.22em;color:var(--soft)}" +
-    ".dia{font-size:5.4pt;vertical-align:middle;margin:0 2mm}" +
-    ".grid{display:grid;grid-template-columns:repeat(" + nCols + ",1fr);gap:6mm 5mm}" +
-    ".card{break-inside:avoid;page-break-inside:avoid}" +
-    ".ph{aspect-ratio:1/1;background:var(--card);border:.3mm solid var(--hair);padding:1.1mm;display:flex;align-items:center;justify-content:center;overflow:hidden}" +
-    ".ph img{width:100%;height:100%;object-fit:cover}" +
-    ".noimg{font-size:7pt;letter-spacing:.12em;color:var(--soft)}" +
-    ".sku{margin-top:2.2mm;height:6.4mm;overflow:hidden;font-size:6.4pt;letter-spacing:.11em;color:var(--soft);word-break:break-word;line-height:1.35}" +
-    ".prc{margin-top:1.2mm;font-family:var(--serif);font-weight:500;font-size:12.5pt}" +
-    ".stk{margin-top:.8mm;font-size:6.2pt;letter-spacing:.14em;color:var(--soft)}" +
-    ".cover{padding:14mm 16mm}" +
-    ".cover .deco{top:6mm;right:6mm;bottom:6mm;left:6mm;border-color:var(--line);border-width:.4mm}" +
-    ".cover .deco::before{border-color:var(--hair)}" +
-    ".cov-in{position:relative;z-index:2;flex:1;display:flex;flex-direction:column;justify-content:space-between}" +
-    ".cov-top{display:flex;justify-content:space-between;font-size:7.4pt;letter-spacing:.28em;color:var(--soft);padding-bottom:6mm;border-bottom:.25mm solid var(--hair)}" +
-    ".cov-mid{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center}" +
-    ".logo{margin-bottom:5mm;flex:0 0 auto;overflow:hidden}" +
-    ".cov-mid h1{font-family:var(--serif);font-weight:400;font-size:54pt;letter-spacing:.16em;line-height:1}" +
-    ".cov-rule{width:52mm;border-top:1.1mm double var(--line);margin:7mm 0 6mm}" +
-    ".cov-sub{font-size:9.5pt;letter-spacing:.36em;color:var(--soft)}" +
-    ".cov-bot{display:grid;grid-template-columns:1fr 1fr;gap:10mm;padding-top:8mm;border-top:.25mm solid var(--hair)}" +
-    ".lbl{font-size:7pt;letter-spacing:.26em;color:var(--soft);margin-bottom:2.5mm}" +
-    ".txt{font-size:9pt;line-height:1.7}" +
-    ".end{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}" +
-    ".end-rule{width:38mm;border-top:1.1mm double var(--line);margin-bottom:9mm}" +
-    ".end-thanks{font-family:var(--serif);font-style:italic;font-size:17pt}" +
-    ".end-contact{margin-top:8mm;font-size:9pt;color:var(--soft)}" +
-    ".end-meta{margin-top:6mm;font-size:7pt;letter-spacing:.24em;color:var(--soft)}" + cetak;
+/* Teks di kartu: toko cincin grosir cukup kode SKU, toko baju butuh nama produk. */
+const utamaKartu = (c, it) => c.teks === "sku" ? it.sku : (it.nama || it.sku);
+const kecilKartu = (c, it) => c.teks === "keduanya" && it.nama ? it.sku : "";
+const fotoKartu = it => it.foto
+  ? `<img src='${esc(it.foto)}' alt='' referrerpolicy='no-referrer'>`
+  : "<div class='noimg'>Tanpa Foto</div>";
+const stokKartu = (c, it, kls) => c.stok ? `<p class='${kls || "stk"}'>Stok ${RE_ID.format(Math.max(0, Math.round(num(it.stok))))}</p>` : "";
+const dua = n => String(n).padStart(2, "0");
 
-  return "@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300&family=Jost:wght@200;300;400;500&display=swap');" +
-    "*{margin:0;padding:0;box-sizing:border-box}" +
-    ":root{--bg:#FCFBF8;--ink:#1C1B18;--dark:#1C1B18;--onDark:#F1ECE1;--brass:#A9884A;--soft:#8A8478;--tile:#F0ECE2;--hair:#E3DDCF;--skuInk:#4E4938;" +
-    "--serif:'Cormorant Garamond',Georgia,'Times New Roman',serif;--sans:'Jost','Segoe UI',Helvetica,Arial,sans-serif;}" +
-    "body{background:#7c7c7c;font-family:var(--sans);color:var(--ink);font-weight:300;-webkit-print-color-adjust:exact;print-color-adjust:exact}" +
-    ".page{width:210mm;height:296.6mm;background:var(--bg);position:relative;padding:14mm 16mm 16mm;" +
-    "margin:8mm auto;box-shadow:0 2mm 8mm rgba(0,0,0,.35);display:flex;flex-direction:column;overflow:hidden}" +
-    ".body{flex:1;min-height:0}" +
+const TEMA_KATALOG = [
+/* ---------------------------------------------------------------- 1 NOIR */
+{ id:"noir", nama:"Noir", cocok:"Perhiasan, jam, barang mewah",
+  mini:{ sampul:"#1C1B18", tulis:"#F1ECE1", aksen:"#A9884A", hal:"#FCFBF8", kartu:"#F0ECE2", pola:"pita" },
+  css: n => FONT("family=Cormorant+Garamond:ital,wght@0,300;0,500;1,300&family=Jost:wght@300;400") +
+    ":root{--bg:#FCFBF8;--ink:#1C1B18;--dark:#1C1B18;--on:#F1ECE1;--brass:#A9884A;--soft:#8A8478;--tile:#F0ECE2;--hair:#E3DDCF;--sku:#4E4938;" +
+    "--serif:'Cormorant Garamond',Georgia,serif;--sans:'Jost','Segoe UI',Arial,sans-serif}" +
+    "body{font-family:var(--sans);color:var(--ink);font-weight:300}.page{background:var(--bg);padding:14mm 16mm 16mm}" +
     ".run{display:flex;justify-content:space-between;align-items:baseline;border-bottom:.3mm solid var(--brass);padding-bottom:2.2mm;margin-bottom:7mm;font-size:7pt;letter-spacing:.34em;text-transform:uppercase;color:var(--soft)}" +
-    ".run .pg{font-family:var(--serif);font-size:11pt;letter-spacing:.08em;color:var(--brass)}" +
-    ".run .dia{color:var(--brass);font-size:5pt;margin-right:2.5mm;vertical-align:middle}" +
-    ".strip{position:absolute;left:0;right:0;bottom:0;height:10mm;background:var(--dark);color:var(--onDark);display:flex;align-items:center;justify-content:space-between;padding:0 16mm;font-size:6pt;letter-spacing:.28em;text-transform:uppercase}" +
-    ".strip .b{color:var(--brass)}" +
-    ".band{background:var(--dark);color:var(--onDark);padding:5.5mm 7mm;margin-bottom:7mm;border-bottom:.7mm solid var(--brass);display:flex;align-items:baseline;justify-content:space-between}" +
-    ".band h2{font-family:var(--serif);font-weight:300;font-size:24pt;letter-spacing:.14em;text-transform:uppercase;line-height:1}" +
-    ".band span{font-size:6.8pt;letter-spacing:.3em;color:var(--brass)}" +
-    ".grid{display:grid;grid-template-columns:repeat(" + nCols + ",1fr);gap:7mm 6mm}" +
-    ".card{break-inside:avoid;page-break-inside:avoid;background:var(--tile);padding:3mm 3mm 3.4mm;border-bottom:.6mm solid var(--brass)}" +
-    ".ph{aspect-ratio:1/1;background:#FFFDF9;border:.25mm solid var(--hair);display:flex;align-items:center;justify-content:center;overflow:hidden}" +
-    ".ph img{width:100%;height:100%;object-fit:cover}" +
-    ".noimg{font-size:7pt;letter-spacing:.14em;color:var(--soft)}" +
-    ".prc{margin-top:2.6mm;font-family:var(--serif);font-weight:500;font-size:14pt;letter-spacing:.02em}" +
-    ".sku{margin-top:1.4mm;height:6.4mm;overflow:hidden;font-size:6.5pt;font-weight:400;letter-spacing:.07em;text-transform:uppercase;color:var(--skuInk);word-break:break-word;line-height:1.35}" +
-    ".stk{margin-top:.6mm;font-size:6.2pt;letter-spacing:.16em;color:var(--brass)}" +
-    ".cover{background:var(--dark);color:var(--onDark);padding:0}" +
-    ".cov-in{flex:1;display:flex;flex-direction:column;justify-content:space-between;margin:9mm;padding:11mm 13mm;border:.3mm solid rgba(169,136,74,.55)}" +
+    ".run .pg{font-family:var(--serif);font-size:11pt;letter-spacing:.08em;color:var(--brass)}.run .dia{color:var(--brass);font-size:5pt;margin-right:2.5mm}" +
+    ".strip{position:absolute;left:0;right:0;bottom:0;height:10mm;background:var(--dark);color:var(--on);display:flex;align-items:center;justify-content:space-between;padding:0 16mm;font-size:6pt;letter-spacing:.28em;text-transform:uppercase}.strip .b{color:var(--brass)}" +
+    ".band{background:var(--dark);color:var(--on);padding:5.5mm 7mm;margin-bottom:7mm;border-bottom:.7mm solid var(--brass);display:flex;align-items:baseline;justify-content:space-between}" +
+    ".band h2{font-family:var(--serif);font-weight:300;font-size:24pt;letter-spacing:.14em;text-transform:uppercase;line-height:1}.band span{font-size:6.8pt;letter-spacing:.3em;color:var(--brass)}" +
+    `.grid{display:grid;grid-template-columns:repeat(${n},1fr);gap:7mm 6mm}` +
+    ".card{background:var(--tile);padding:3mm 3mm 3.4mm;border-bottom:.6mm solid var(--brass)}.ph{background:#FFFDF9;border:.25mm solid var(--hair)}" +
+    ".prc{margin-top:2.6mm;font-family:var(--serif);font-weight:500;font-size:14pt}" +
+    ".nm{margin-top:1.4mm;font-size:6.6pt;font-weight:400;letter-spacing:.07em;text-transform:uppercase;color:var(--sku);line-height:1.35;height:6.4mm;overflow:hidden;word-break:break-word}" +
+    ".sk{font-size:5.6pt;letter-spacing:.1em;color:var(--soft)}.stk{margin-top:.6mm;font-size:6.2pt;letter-spacing:.16em;color:var(--brass)}" +
+    ".cover{background:var(--dark);color:var(--on);padding:0}.cov-in{flex:1;display:flex;flex-direction:column;justify-content:space-between;margin:9mm;padding:11mm 13mm;border:.3mm solid rgba(169,136,74,.55)}" +
     ".cov-top{display:flex;justify-content:space-between;font-size:7pt;letter-spacing:.34em;text-transform:uppercase;color:var(--brass)}" +
-    ".cov-mid{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center}" +
-    ".logo{margin-bottom:6mm;flex:0 0 auto;overflow:hidden}" +
-    ".cov-mid h1{font-family:var(--serif);font-weight:300;font-size:50pt;letter-spacing:.34em;line-height:1;text-indent:.34em;text-transform:uppercase}" +
-    ".cov-rule{width:34mm;height:.3mm;background:var(--brass);margin:9mm 0 7mm}" +
-    ".cov-sub{font-size:8pt;letter-spacing:.44em;text-transform:uppercase;color:var(--brass)}" +
-    ".cov-bot{display:grid;grid-template-columns:1fr 1fr;gap:12mm}" +
-    ".lbl{font-family:var(--serif);font-style:italic;font-size:10pt;color:var(--brass);margin-bottom:2.5mm}" +
-    ".txt{font-size:8.5pt;line-height:1.8;color:rgba(241,236,225,.82)}" +
-    ".end .cov-in{justify-content:center}" +
-    ".end-mid{display:flex;flex-direction:column;align-items:center;text-align:center}" +
-    ".end-thanks{font-family:var(--serif);font-style:italic;font-size:19pt;font-weight:300}" +
-    ".end-contact{font-size:8.5pt;letter-spacing:.05em;color:rgba(241,236,225,.82)}" +
-    ".end-meta{margin-top:7mm;font-size:6.6pt;letter-spacing:.3em;text-transform:uppercase;color:var(--brass)}" + cetak;
+    ".cov-mid{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}.cov-mid .logo{margin-bottom:7mm}" +
+    ".cov-mid h1{font-family:var(--serif);font-weight:300;font-size:46pt;letter-spacing:.3em;text-indent:.3em;line-height:1.05;text-transform:uppercase}" +
+    ".cov-rule{width:34mm;height:.3mm;background:var(--brass);margin:9mm auto 7mm}.cov-sub{font-size:8pt;letter-spacing:.44em;text-transform:uppercase;color:var(--brass)}" +
+    ".cov-bot{display:grid;grid-template-columns:1fr 1fr;gap:12mm}.lbl{font-family:var(--serif);font-style:italic;font-size:10pt;color:var(--brass);margin-bottom:2.5mm}" +
+    ".txt{font-size:8.5pt;line-height:1.8;color:rgba(241,236,225,.82)}.end .cov-in{justify-content:center;align-items:center;text-align:center}" +
+    ".end-thanks{font-family:var(--serif);font-style:italic;font-size:19pt;font-weight:300;margin-top:6mm}.end-meta{margin-top:7mm;font-size:6.6pt;letter-spacing:.3em;text-transform:uppercase;color:var(--brass)}",
+  sampul: c => `<section class='page cover'><div class='cov-in'>
+    <div class='cov-top'><span>${c.E(c.eyebrow)}</span><span>${c.E(c.edisi)}</span></div>
+    <div class='cov-mid'>${c.logo(1)}<h1 style='font-size:${c.fit(c.brand, 46, 166, 0.92)}pt'>${c.E(c.brand)}</h1><div class='cov-rule'></div><p class='cov-sub'>${c.E(c.sub)}</p></div>
+    <div class='cov-bot'><div><p class='lbl'>Pemesanan</p><p class='txt'>${c.kontak}</p></div>
+    <div><p class='lbl'>Keterangan</p><p class='txt'>${c.catatan}</p></div></div></div></section>`,
+  halaman: (c, h) => `<section class='page'><header class='run'><span><span class='dia'>&#9670;</span>${c.E(h.kat)}</span><span class='pg'>${dua(h.no)}</span></header>
+    <div class='body'>${h.pertama ? `<div class='band'><h2>${c.E(h.kat)}</h2><span>${h.jml} PRODUK</span></div>` : ""}
+    <div class='grid'>${h.kartu.join("")}</div></div>
+    <div class='strip'><span>${c.E(c.brand)}</span><span class='b'>${c.E(c.label)}</span></div></section>`,
+  kartu: (c, it) => `<article class='card'><div class='ph'>${fotoKartu(it)}</div><p class='prc'>${c.rp(it.harga)}</p>
+    <p class='nm'>${c.E(utamaKartu(c, it))}${kecilKartu(c, it) ? `<br><span class='sk'>${c.E(kecilKartu(c, it))}</span>` : ""}</p>${stokKartu(c, it)}</article>`,
+  penutup: c => `<section class='page cover end'><div class='cov-in'>${c.logo(0.8)}
+    <p class='end-thanks'>Terima kasih atas kepercayaan Anda.</p><div class='cov-rule'></div>
+    <p class='txt'>${c.kontak}</p><p class='end-meta'>${c.E(c.edisi)} &middot; ${c.n} produk</p></div></section>` },
+
+/* ---------------------------------------------------------------- 2 PUTIH KLASIK */
+{ id:"putih", nama:"Putih Klasik", cocok:"Butik, fesyen, barang premium",
+  mini:{ sampul:"#F6F3EB", tulis:"#17150F", aksen:"#17150F", hal:"#F6F3EB", kartu:"#FBF9F3", pola:"bingkai" },
+  css: n => FONT("family=Playfair+Display:ital,wght@0,400;0,500;1,400&family=Lato:wght@300;400;700") +
+    ":root{--bg:#F6F3EB;--card:#FBF9F3;--ink:#17150F;--soft:#6E6A5E;--hair:#D6CFBC;--hair2:#E4DECE;--serif:'Playfair Display',Georgia,serif;--sans:'Lato','Segoe UI',Arial,sans-serif}" +
+    "body{font-family:var(--sans);color:var(--ink)}.page{background:var(--bg);padding:15mm 16mm 12mm}.body{z-index:2}" +
+    ".deco{position:absolute;inset:8mm;border:.25mm solid var(--hair);pointer-events:none}.deco::before{content:'';position:absolute;inset:1.3mm;border:.25mm solid var(--hair2)}" +
+    ".mark{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:var(--serif);font-size:150mm;line-height:1;opacity:.028;pointer-events:none}" +
+    ".foot{position:relative;z-index:2;border-top:.35mm solid var(--hair);padding-top:2.5mm;display:flex;justify-content:space-between;font-size:6.6pt;letter-spacing:.18em;color:var(--soft)}.foot .pg{font-family:var(--serif);font-size:8pt}" +
+    ".kat{display:flex;align-items:baseline;justify-content:space-between;border-bottom:1.1mm double var(--ink);padding-bottom:2mm;margin-bottom:6mm}.kat h2{font-family:var(--serif);font-weight:500;font-size:26pt;letter-spacing:.06em}.kat span{font-size:7pt;letter-spacing:.22em;color:var(--soft)}" +
+    `.grid{display:grid;grid-template-columns:repeat(${n},1fr);gap:6mm 5mm}` +
+    ".ph{background:var(--card);border:.3mm solid var(--hair);padding:1.1mm}.nm{margin-top:2.2mm;height:6.4mm;overflow:hidden;font-size:6.5pt;letter-spacing:.1em;color:var(--soft);line-height:1.35;word-break:break-word;text-transform:uppercase}" +
+    ".prc{margin-top:1.2mm;font-family:var(--serif);font-weight:500;font-size:12.5pt}.stk{margin-top:.8mm;font-size:6.2pt;letter-spacing:.14em;color:var(--soft)}" +
+    ".cover{padding:14mm 16mm}.cover .deco{inset:6mm;border:.4mm solid var(--ink)}.cov-in{position:relative;z-index:2;flex:1;display:flex;flex-direction:column;justify-content:space-between}" +
+    ".cov-top{display:flex;justify-content:space-between;font-size:7.4pt;letter-spacing:.28em;color:var(--soft);padding-bottom:6mm;border-bottom:.25mm solid var(--hair)}" +
+    ".cov-mid{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}.cov-mid .logo{margin-bottom:6mm}.cov-mid h1{font-family:var(--serif);font-weight:400;font-size:50pt;letter-spacing:.12em;line-height:1.05}" +
+    ".cov-rule{width:52mm;border-top:1.1mm double var(--ink);margin:7mm auto 6mm}.cov-sub{font-size:9.5pt;letter-spacing:.36em;color:var(--soft)}" +
+    ".cov-bot{display:grid;grid-template-columns:1fr 1fr;gap:10mm;padding-top:8mm;border-top:.25mm solid var(--hair)}.lbl{font-size:7pt;letter-spacing:.26em;color:var(--soft);margin-bottom:2.5mm}.txt{font-size:9pt;line-height:1.7}" +
+    ".end{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}.end-thanks{font-family:var(--serif);font-style:italic;font-size:17pt;margin-top:9mm}",
+  sampul: c => `<section class='page cover'><div class='deco'></div><div class='mark'>${c.E(c.inisial)}</div><div class='cov-in'>
+    <div class='cov-top'><span>${c.E(c.eyebrow)}</span><span>${c.E(c.edisi)}</span></div>
+    <div class='cov-mid'>${c.logo(1)}<h1 style='font-size:${c.fit(c.brand, 50, 178, 0.78)}pt'>${c.E(c.brand)}</h1><div class='cov-rule'></div><p class='cov-sub'>${c.E(c.sub)}</p></div>
+    <div class='cov-bot'><div><p class='lbl'>PEMESANAN</p><p class='txt'>${c.kontak}</p></div><div><p class='lbl'>KETERANGAN</p><p class='txt'>${c.catatan}</p></div></div></div></section>`,
+  halaman: (c, h) => `<section class='page'><div class='deco'></div><div class='body'>
+    ${h.pertama ? `<header class='kat'><h2>${c.E(h.kat)}</h2><span>&#9670; ${h.jml} PRODUK</span></header>` : ""}
+    <div class='grid'>${h.kartu.join("")}</div></div>
+    <footer class='foot'><span>${c.E(c.brand)} &middot; ${c.E(c.sub)}</span><span class='pg'>${dua(h.no)}</span><span>${c.E(c.label)}</span></footer></section>`,
+  kartu: (c, it) => `<article class='card'><div class='ph'>${fotoKartu(it)}</div><p class='nm'>${c.E(utamaKartu(c, it))}${kecilKartu(c, it) ? " &middot; " + c.E(kecilKartu(c, it)) : ""}</p>
+    <p class='prc'>${c.rp(it.harga)}</p>${stokKartu(c, it)}</article>`,
+  penutup: c => `<section class='page'><div class='deco'></div><div class='mark'>${c.E(c.inisial)}</div><div class='body end'>${c.logo(0.8)}
+    <p class='end-thanks'>Terima kasih atas kepercayaan Anda.</p><p class='txt' style='margin-top:6mm;color:var(--soft)'>${c.kontak}</p></div>
+    <footer class='foot'><span>${c.E(c.brand)}</span><span></span><span>${c.E(c.edisi)}</span></footer></section>` },
+
+/* ---------------------------------------------------------------- 3 SWISS */
+{ id:"swiss", nama:"Swiss Minimal", cocok:"Elektronik, perabot, desain modern",
+  mini:{ sampul:"#FFFFFF", tulis:"#111111", aksen:"#E3342F", hal:"#FFFFFF", kartu:"#F2F2F2", pola:"garis" },
+  css: n => FONT("family=Inter:wght@400;600;800") +
+    ":root{--ink:#111;--red:#E3342F;--gray:#F2F2F2;--soft:#6B6B6B}body{font-family:'Inter','Helvetica Neue',Arial,sans-serif;color:var(--ink)}" +
+    ".page{background:#fff;padding:15mm 16mm 12mm}" +
+    ".hd{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:1.2mm solid var(--ink);padding-bottom:2mm;margin-bottom:6mm;font-size:7pt;font-weight:600;letter-spacing:.06em;text-transform:uppercase}" +
+    ".hd .no{font-size:22pt;font-weight:800;line-height:.8;color:var(--red)}" +
+    ".ttl{display:flex;align-items:baseline;gap:5mm;margin-bottom:7mm}.ttl h2{font-size:32pt;font-weight:800;letter-spacing:-.03em;line-height:.95}.ttl span{font-size:7.5pt;color:var(--soft);font-weight:600}" +
+    `.grid{display:grid;grid-template-columns:repeat(${n},1fr);gap:7mm 5mm}` +
+    ".ph{background:var(--gray)}.tx{border-top:.3mm solid var(--ink);margin-top:2mm;padding-top:1.6mm}" +
+    ".prc{font-size:11.5pt;font-weight:800;letter-spacing:-.02em}.nm{font-size:6.6pt;line-height:1.3;margin-top:.8mm;height:5.2mm;overflow:hidden;color:var(--ink)}" +
+    ".sk{font-size:5.6pt;color:var(--soft)}.stk{font-size:6pt;color:var(--red);font-weight:600;margin-top:.6mm}" +
+    ".ft{border-top:.3mm solid var(--ink);padding-top:2mm;display:flex;justify-content:space-between;font-size:6.5pt;font-weight:600;letter-spacing:.04em}" +
+    ".cover{padding:18mm}.sq{width:14mm;height:14mm;background:var(--red)}.ctop{display:flex;justify-content:space-between;align-items:flex-start;font-size:7.5pt;font-weight:600;text-transform:uppercase;letter-spacing:.06em}" +
+    ".cmid{flex:1;display:flex;flex-direction:column;justify-content:flex-end;padding-bottom:12mm}.cmid .logo{margin:0 0 8mm 0}" +
+    ".cmid h1{font-size:62pt;font-weight:800;letter-spacing:-.045em;line-height:.88;word-break:break-word}.cmid p{margin-top:5mm;font-size:13pt;font-weight:600;color:var(--red)}" +
+    ".cbot{display:grid;grid-template-columns:1fr 1fr;gap:10mm;border-top:1.2mm solid var(--ink);padding-top:4mm;font-size:8pt;line-height:1.6}.cbot b{display:block;font-size:6.5pt;text-transform:uppercase;letter-spacing:.08em;margin-bottom:1.5mm}" +
+    ".end h1{font-size:44pt;font-weight:800;letter-spacing:-.04em}",
+  sampul: c => `<section class='page cover'><div class='ctop'><div class='sq'></div><span>${c.E(c.eyebrow)}</span><span>${c.E(c.edisi)}</span></div>
+    <div class='cmid'>${c.logo(0.9, "margin-left:0")}<h1 style='font-size:${c.fit(c.brand, 62, 174, 0.66)}pt'>${c.E(c.brand)}</h1><p>${c.E(c.sub)}</p></div>
+    <div class='cbot'><div><b>Pemesanan</b>${c.kontak}</div><div><b>Keterangan</b>${c.catatan}</div></div></section>`,
+  halaman: (c, h) => `<section class='page'><header class='hd'><span class='no'>${dua(h.nomorKat)}</span><span>${c.E(h.kat)}</span><span>${c.E(c.brand)} — ${dua(h.no)}</span></header>
+    <div class='body'>${h.pertama ? `<div class='ttl'><h2>${c.E(h.kat)}</h2><span>${h.jml} produk</span></div>` : ""}
+    <div class='grid'>${h.kartu.join("")}</div></div><footer class='ft'><span>${c.E(c.sub)}</span><span>${c.E(c.label)}</span></footer></section>`,
+  kartu: (c, it) => `<article class='card'><div class='ph'>${fotoKartu(it)}</div><div class='tx'><p class='prc'>${c.rp(it.harga)}</p>
+    <p class='nm'>${c.E(utamaKartu(c, it))}${kecilKartu(c, it) ? ` <span class='sk'>${c.E(kecilKartu(c, it))}</span>` : ""}</p>${stokKartu(c, it)}</div></article>`,
+  penutup: c => `<section class='page cover end'><div class='ctop'><div class='sq'></div><span></span><span>${c.E(c.edisi)}</span></div>
+    <div class='cmid'><h1>Terima kasih.</h1><p style='color:var(--ink);font-size:9pt;font-weight:400;line-height:1.7'>${c.kontak}</p></div>
+    <div class='cbot'><div><b>${c.E(c.brand)}</b>${c.n} produk</div><div>${c.logo(0.6, "margin-left:0")}</div></div></section>` },
+
+/* ---------------------------------------------------------------- 4 PASTEL */
+{ id:"pastel", nama:"Pastel Ceria", cocok:"Anak, kosmetik, aksesori, kado",
+  mini:{ sampul:"#FFF1E6", tulis:"#3D3A4B", aksen:"#F28482", hal:"#E2ECE9", kartu:"#FFFFFF", pola:"bulat" },
+  css: n => FONT("family=Poppins:wght@400;600;700") +
+    ":root{--ink:#3D3A4B;--acc:#F28482;--soft:#7B7890}body{font-family:'Poppins','Segoe UI',Arial,sans-serif;color:var(--ink)}" +
+    ".page{padding:14mm 15mm 12mm}.hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:6mm}" +
+    ".pill{background:#fff;border-radius:99mm;padding:2mm 5mm;font-size:8pt;font-weight:600;box-shadow:0 .6mm 0 rgba(0,0,0,.06)}" +
+    ".num{width:9mm;height:9mm;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-size:7pt;font-weight:700}" +
+    ".ttl{text-align:center;margin:-1mm 0 7mm}.ttl h2{font-size:28pt;font-weight:700;letter-spacing:-.01em}.ttl span{display:inline-block;margin-top:1mm;background:var(--acc);color:#fff;border-radius:99mm;padding:.8mm 4mm;font-size:7pt;font-weight:600}" +
+    `.grid{display:grid;grid-template-columns:repeat(${n},1fr);gap:5mm}` +
+    ".card{background:#fff;border-radius:5mm;padding:2.4mm 2.4mm 3mm;box-shadow:0 1mm 0 rgba(0,0,0,.05)}.ph{border-radius:3.6mm;background:#F7F4F0}" +
+    ".prc{margin-top:2.2mm;font-size:11pt;font-weight:700;color:var(--acc)}.nm{font-size:6.6pt;line-height:1.3;height:5.2mm;overflow:hidden;margin-top:.4mm}" +
+    ".sk{font-size:5.6pt;color:var(--soft)}.stk{font-size:6pt;color:var(--soft);margin-top:.6mm}.ft{text-align:center;font-size:6.5pt;color:var(--soft);padding-top:3mm}" +
+    ".cover{background:#FFF1E6;align-items:center;justify-content:center}.blob{position:absolute;border-radius:50%}" +
+    ".box{position:relative;background:#fff;border-radius:10mm;padding:16mm 14mm;width:140mm;text-align:center;box-shadow:0 2mm 0 rgba(0,0,0,.05)}.box .logo{margin-bottom:6mm}" +
+    ".box h1{font-size:40pt;font-weight:700;line-height:1.05;letter-spacing:-.02em;word-break:break-word}.box .sub{display:inline-block;margin-top:5mm;background:var(--acc);color:#fff;border-radius:99mm;padding:1.5mm 6mm;font-size:9pt;font-weight:600}" +
+    ".eb{display:flex;justify-content:space-between;font-size:7pt;font-weight:600;color:var(--soft);margin-bottom:8mm}.info{margin-top:9mm;font-size:8pt;line-height:1.7;color:var(--soft)}",
+  sampul: c => `<section class='page cover'>
+    <div class='blob' style='width:120mm;height:120mm;background:#FDE2E4;top:-30mm;left:-35mm'></div>
+    <div class='blob' style='width:90mm;height:90mm;background:#DFE7FD;bottom:-20mm;right:-25mm'></div>
+    <div class='blob' style='width:45mm;height:45mm;background:#E2ECE9;top:40mm;right:18mm'></div>
+    <div class='box'><div class='eb'><span>${c.E(c.eyebrow)}</span><span>${c.E(c.edisi)}</span></div>${c.logo(1)}
+      <h1 style='font-size:${c.fit(c.brand, 40, 112, 0.64)}pt'>${c.E(c.brand)}</h1><span class='sub'>${c.E(c.sub)}</span>
+      <p class='info'>${c.kontak}<br>${c.catatan}</p></div></section>`,
+  halaman: (c, h) => `<section class='page' style='background:${c.warnaKat(h.nomorKat, ["#FDE2E4","#E2ECE9","#FFF1E6","#DFE7FD","#F0EFEB","#E8DFF5"])}'>
+    <header class='hd'><span class='pill'>${c.E(h.kat)}</span><span class='num'>${h.no}</span></header>
+    <div class='body'>${h.pertama ? `<div class='ttl'><h2>${c.E(h.kat)}</h2><br><span>${h.jml} produk</span></div>` : ""}
+    <div class='grid'>${h.kartu.join("")}</div></div><footer class='ft'>${c.E(c.brand)}${c.label ? " &middot; " + c.E(c.label) : ""}</footer></section>`,
+  kartu: (c, it) => `<article class='card'><div class='ph'>${fotoKartu(it)}</div><p class='prc'>${c.rp(it.harga)}</p>
+    <p class='nm'>${c.E(utamaKartu(c, it))}${kecilKartu(c, it) ? ` <span class='sk'>${c.E(kecilKartu(c, it))}</span>` : ""}</p>${stokKartu(c, it)}</article>`,
+  penutup: c => `<section class='page cover' style='background:#FDE2E4'><div class='blob' style='width:80mm;height:80mm;background:#FFF1E6;top:30mm;left:-20mm'></div>
+    <div class='box'>${c.logo(0.8)}<h1 style='font-size:34pt'>Terima kasih!</h1><p class='info'>${c.kontak}</p></div></section>` },
+
+/* ---------------------------------------------------------------- 5 TERAKOTA */
+{ id:"terakota", nama:"Terakota", cocok:"Kerajinan, dekorasi rumah, kain",
+  mini:{ sampul:"#C0633B", tulis:"#F4ECE1", aksen:"#7A7D4F", hal:"#F4ECE1", kartu:"#EADFD0", pola:"lengkung" },
+  css: n => FONT("family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,400&family=Karla:wght@400;600") +
+    ":root{--sand:#F4ECE1;--ink:#3B2A20;--tc:#C0633B;--ol:#7A7D4F;--tile:#EADFD0;--serif:'Fraunces',Georgia,serif}body{font-family:'Karla',Arial,sans-serif;color:var(--ink)}" +
+    ".page{background:var(--sand);padding:14mm 16mm 12mm}.hd{display:flex;align-items:center;gap:4mm;margin-bottom:6mm;font-family:var(--serif);font-style:italic;font-size:11pt}" +
+    ".hd i{flex:1;height:.4mm;background:var(--tc)}.hd .no{font-style:normal;font-size:8pt;color:var(--tc);font-family:'Karla'}" +
+    ".ttl{margin-bottom:7mm}.ttl h2{font-family:var(--serif);font-weight:600;font-size:30pt;line-height:1}.ttl span{font-size:7.5pt;color:var(--ol);letter-spacing:.12em;text-transform:uppercase}" +
+    `.grid{display:grid;grid-template-columns:repeat(${n},1fr);gap:7mm 5mm}` +
+    ".ph{background:var(--tile);border-radius:50% 50% 1.5mm 1.5mm / 36% 36% 1.5mm 1.5mm}" +
+    ".prc{margin-top:2.2mm;font-family:var(--serif);font-weight:600;font-size:12.5pt;color:var(--tc)}.nm{font-size:6.6pt;line-height:1.3;height:5.2mm;overflow:hidden;margin-top:.4mm;letter-spacing:.02em}" +
+    ".sk{font-size:5.6pt;color:var(--ol)}.stk{font-size:6pt;color:var(--ol);margin-top:.6mm}" +
+    ".ft{display:flex;justify-content:space-between;border-top:.3mm solid var(--ol);padding-top:2mm;font-size:6.5pt;color:var(--ol);letter-spacing:.1em;text-transform:uppercase}" +
+    ".cover{background:var(--tc);color:var(--sand);padding:14mm 16mm;align-items:center}" +
+    ".ctop{width:100%;display:flex;justify-content:space-between;font-size:7.5pt;letter-spacing:.2em;text-transform:uppercase}" +
+    ".arch{margin:auto;width:120mm;height:165mm;background:var(--sand);color:var(--ink);border-radius:60mm 60mm 0 0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:14mm}" +
+    ".arch .logo{margin-bottom:7mm}.arch h1{font-family:var(--serif);font-weight:300;font-size:40pt;line-height:1.05;word-break:break-word}" +
+    ".arch p{margin-top:5mm;font-family:var(--serif);font-style:italic;font-size:12pt;color:var(--tc)}.cbot{width:100%;display:grid;grid-template-columns:1fr 1fr;gap:10mm;font-size:8pt;line-height:1.7}",
+  sampul: c => `<section class='page cover'><div class='ctop'><span>${c.E(c.eyebrow)}</span><span>${c.E(c.edisi)}</span></div>
+    <div class='arch'>${c.logo(1)}<h1 style='font-size:${c.fit(c.brand, 40, 92, 0.6)}pt'>${c.E(c.brand)}</h1><p>${c.E(c.sub)}</p></div>
+    <div class='cbot'><div>${c.kontak}</div><div style='text-align:right'>${c.catatan}</div></div></section>`,
+  halaman: (c, h) => `<section class='page'><header class='hd'><span>${c.E(h.kat)}</span><i></i><span class='no'>${dua(h.no)}</span></header>
+    <div class='body'>${h.pertama ? `<div class='ttl'><h2>${c.E(h.kat)}</h2><span>${h.jml} produk</span></div>` : ""}
+    <div class='grid'>${h.kartu.join("")}</div></div><footer class='ft'><span>${c.E(c.brand)}</span><span>${c.E(c.label)}</span></footer></section>`,
+  kartu: (c, it) => `<article class='card'><div class='ph'>${fotoKartu(it)}</div><p class='prc'>${c.rp(it.harga)}</p>
+    <p class='nm'>${c.E(utamaKartu(c, it))}${kecilKartu(c, it) ? ` <span class='sk'>${c.E(kecilKartu(c, it))}</span>` : ""}</p>${stokKartu(c, it)}</article>`,
+  penutup: c => `<section class='page cover'><div class='arch' style='height:120mm'>${c.logo(0.8)}<h1 style='font-style:italic;font-size:30pt'>Terima kasih</h1>
+    <p style='font-family:Karla;font-style:normal;font-size:8pt;color:var(--ink)'>${c.kontak}</p></div></section>` },
+
+/* ---------------------------------------------------------------- 6 MAJALAH */
+{ id:"majalah", nama:"Majalah", cocok:"Fesyen, gaya hidup, koleksi musiman",
+  mini:{ sampul:"#0F5B4A", tulis:"#FFFFFF", aksen:"#0F5B4A", hal:"#FFFFFF", kartu:"#F5F3EE", pola:"fitur" },
+  kapasitas: (c, pertama) => pertama ? Math.max(1, c.kolom * c.baris1 - (c.kolom >= 3 ? 3 : 0)) : c.kolom * c.baris2,
+  css: n => FONT("family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@400;700") +
+    ":root{--ink:#161616;--acc:#0F5B4A;--paper:#F5F3EE;--soft:#777}body{font-family:'DM Sans',Arial,sans-serif;color:var(--ink)}" +
+    ".page{background:#fff;padding:13mm 15mm 11mm}.hd{display:flex;justify-content:space-between;font-size:6.8pt;letter-spacing:.18em;text-transform:uppercase;color:var(--soft);margin-bottom:6mm}" +
+    ".ttl{display:flex;align-items:flex-end;justify-content:space-between;border-bottom:.3mm solid var(--ink);padding-bottom:3mm;margin-bottom:6mm}" +
+    ".ttl h2{font-family:'DM Serif Display',serif;font-weight:400;font-size:40pt;line-height:.95}.ttl span{font-family:'DM Serif Display',serif;font-style:italic;font-size:12pt;color:var(--acc)}" +
+    `.grid{display:grid;grid-template-columns:repeat(${n},1fr);grid-auto-flow:dense;gap:6mm 5mm}` +
+    `.fitur{grid-column:span ${Math.min(2, n)};grid-row:span 2}.fitur .nm{font-size:13pt;height:auto}.fitur .prc{font-size:11pt}` +
+    ".ph{background:var(--paper)}.nm{font-family:'DM Serif Display',serif;font-size:9.5pt;line-height:1.15;margin-top:2mm;height:8.4mm;overflow:hidden}" +
+    ".prc{font-size:8pt;font-weight:700;color:var(--acc);margin-top:.8mm;letter-spacing:.03em}.sk{font-family:'DM Sans';font-size:5.6pt;color:var(--soft)}.stk{font-size:6pt;color:var(--soft)}" +
+    ".ft{text-align:center;font-family:'DM Serif Display',serif;font-size:10pt;padding-top:3mm}" +
+    ".cover{padding:0;flex-direction:row}.cl{width:46%;background:var(--acc);color:#fff;padding:16mm 12mm;display:flex;flex-direction:column;justify-content:space-between}" +
+    ".cl h1{font-family:'DM Serif Display',serif;font-weight:400;font-size:44pt;line-height:.98;word-break:break-word}.cl .eb{font-size:7pt;letter-spacing:.2em;text-transform:uppercase;opacity:.8}" +
+    ".cl .sub{font-family:'DM Serif Display',serif;font-style:italic;font-size:13pt;margin-top:5mm}.cl .logo{margin:0 0 8mm 0}.cl .tx{font-size:7.5pt;line-height:1.7;opacity:.9}" +
+    ".cr{flex:1;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;background:var(--paper)}.cr div{overflow:hidden;background:var(--paper)}.cr img{width:100%;height:100%;object-fit:cover;display:block}",
+  sampul: c => `<section class='page cover'><div class='cl'><div><p class='eb'>${c.E(c.eyebrow)}</p></div>
+    <div>${c.logo(0.9, "margin-left:0")}<h1 style='font-size:${c.fit(c.brand, 44, 72, 0.56)}pt'>${c.E(c.brand)}</h1><p class='sub'>${c.E(c.sub)}</p></div>
+    <div class='tx'>${c.E(c.edisi)}<br><br>${c.kontak}</div></div>
+    <div class='cr'>${[0,1,2,3].map(i => `<div>${c.foto[i] ? `<img src='${c.E(c.foto[i])}' alt='' referrerpolicy='no-referrer'>` : ""}</div>`).join("")}</div></section>`,
+  halaman: (c, h) => `<section class='page'><header class='hd'><span>No. ${dua(h.nomorKat)} — ${c.E(h.kat)}</span><span>${c.E(c.brand)}</span></header>
+    <div class='body'>${h.pertama ? `<div class='ttl'><h2>${c.E(h.kat)}</h2><span>${h.jml} produk</span></div>` : ""}
+    <div class='grid'>${h.kartu.map((k, i) => h.pertama && i === 0 && c.kolom >= 3 ? k.replace("class='card'", "class='card fitur'") : k).join("")}</div></div>
+    <footer class='ft'>${h.no}</footer></section>`,
+  kartu: (c, it) => `<article class='card'><div class='ph'>${fotoKartu(it)}</div><p class='nm'>${c.E(utamaKartu(c, it))}</p>
+    <p class='prc'>${c.rp(it.harga)}${kecilKartu(c, it) ? ` <span class='sk'>${c.E(kecilKartu(c, it))}</span>` : ""}</p>${stokKartu(c, it)}</article>`,
+  penutup: c => `<section class='page' style='background:var(--paper);align-items:center;justify-content:center;text-align:center'>${c.logo(0.8)}
+    <p style="font-family:'DM Serif Display',serif;font-style:italic;font-size:26pt;margin-top:8mm">Terima kasih telah berbelanja.</p>
+    <p style='margin-top:6mm;font-size:8.5pt;line-height:1.7;color:var(--soft)'>${c.kontak}</p></section>` },
+
+/* ---------------------------------------------------------------- 7 PROMO */
+{ id:"promo", nama:"Promo Berani", cocok:"Grosir, sembako, diskon & flash sale",
+  mini:{ sampul:"#FFD60A", tulis:"#111111", aksen:"#E63946", hal:"#FFFFFF", kartu:"#FFFFFF", pola:"label" },
+  css: n => FONT("family=Archivo+Black&family=Archivo:wght@500;700") +
+    ":root{--y:#FFD60A;--k:#111;--r:#E63946}body{font-family:'Archivo',Arial,sans-serif;color:var(--k)}" +
+    ".page{background:#fff;padding:0 0 0}.bar{background:var(--k);color:var(--y);display:flex;justify-content:space-between;align-items:center;padding:5mm 14mm;font-family:'Archivo Black';font-size:15pt;text-transform:uppercase}" +
+    ".bar span:last-child{font-size:9pt;color:#fff}.body{padding:7mm 14mm 4mm}" +
+    ".ttl{font-family:'Archivo Black';font-size:30pt;text-transform:uppercase;line-height:1;margin-bottom:6mm}.ttl em{font-style:normal;background:var(--r);color:#fff;font-size:9pt;padding:1mm 3mm;vertical-align:middle;margin-left:3mm}" +
+    `.grid{display:grid;grid-template-columns:repeat(${n},1fr);gap:6mm 5mm}` +
+    ".card{border:.6mm solid var(--k)}.ph{background:#F4F4F4;border-bottom:.6mm solid var(--k)}" +
+    ".tag{position:absolute;right:-1mm;bottom:2.5mm;background:var(--r);color:#fff;font-family:'Archivo Black';font-size:10pt;padding:1.2mm 3mm;transform:rotate(-4deg);box-shadow:.6mm .6mm 0 var(--k)}" +
+    ".nm{font-size:6.6pt;font-weight:700;text-transform:uppercase;line-height:1.25;padding:1.8mm 2mm;height:9mm;overflow:hidden}.sk{font-weight:500;color:#666}" +
+    ".stk{font-size:6pt;font-weight:700;padding:0 2mm 1.6mm;color:var(--r)}.ft{background:var(--y);display:flex;justify-content:space-between;padding:3mm 14mm;font-family:'Archivo Black';font-size:8pt;text-transform:uppercase}" +
+    ".cover{background:var(--y);padding:16mm 14mm;justify-content:space-between}.tg{display:inline-block;background:var(--k);color:var(--y);font-family:'Archivo Black';font-size:9pt;padding:1.5mm 4mm;text-transform:uppercase}" +
+    ".stripe{position:absolute;left:-20mm;right:-20mm;top:92mm;background:var(--k);color:#fff;transform:rotate(-7deg);padding:14mm 30mm;text-align:center}" +
+    ".stripe h1{font-family:'Archivo Black';font-size:46pt;line-height:1;text-transform:uppercase;word-break:break-word}.stripe p{color:var(--y);font-family:'Archivo Black';font-size:13pt;margin-top:3mm;text-transform:uppercase}" +
+    ".ed{background:var(--r);color:#fff;font-family:'Archivo Black';padding:2mm 5mm;display:inline-block;font-size:10pt;text-transform:uppercase}.cbot{font-size:9pt;font-weight:700;line-height:1.6}",
+  sampul: c => `<section class='page cover'><div style='display:flex;justify-content:space-between;align-items:flex-start'><span class='tg'>${c.E(c.eyebrow || "KATALOG")}</span>${c.logo(0.8, "margin:0")}</div>
+    <div class='stripe'><h1 style='font-size:${c.fit(c.brand, 46, 170, 0.74)}pt'>${c.E(c.brand)}</h1><p>${c.E(c.sub)}</p></div>
+    <div><span class='ed'>${c.E(c.edisi || "EDISI TERBARU")}</span><p class='cbot' style='margin-top:5mm'>${c.kontak}<br>${c.catatan}</p></div></section>`,
+  halaman: (c, h) => `<section class='page'><div class='bar'><span>${c.E(h.kat)}</span><span>${c.E(c.brand)} &middot; ${dua(h.no)}</span></div>
+    <div class='body'>${h.pertama ? `<div class='ttl'>${c.E(h.kat)}<em>${h.jml} PRODUK</em></div>` : ""}<div class='grid'>${h.kartu.join("")}</div></div>
+    <footer class='ft'><span>${c.E(c.sub)}</span><span>${c.E(c.label)}</span></footer></section>`,
+  kartu: (c, it) => `<article class='card'><div class='ph'>${fotoKartu(it)}<span class='tag'>${c.rp(it.harga)}</span></div>
+    <p class='nm'>${c.E(utamaKartu(c, it))}${kecilKartu(c, it) ? `<br><span class='sk'>${c.E(kecilKartu(c, it))}</span>` : ""}</p>${stokKartu(c, it)}</article>`,
+  penutup: c => `<section class='page cover' style='background:var(--k);color:var(--y);justify-content:center;align-items:center;text-align:center'>
+    <h1 style="font-family:'Archivo Black';font-size:48pt;line-height:1">TERIMA<br>KASIH!</h1><p class='cbot' style='color:#fff;margin-top:8mm'>${c.kontak}</p></section>` },
+
+/* ---------------------------------------------------------------- 8 DAFTAR HARGA */
+{ id:"daftar", nama:"Daftar Harga", cocok:"Grosir & reseller: ratusan SKU, padat, cepat dibaca",
+  mini:{ sampul:"#FFFFFF", tulis:"#1F2933", aksen:"#2563EB", hal:"#FFFFFF", kartu:"#F5F7FA", pola:"daftar" },
+  kapasitas: (c, pertama) => pertama ? 24 : 28,
+  aturSendiri: true,
+  css: () => FONT("family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Mono:wght@500;600") +
+    ":root{--ink:#1F2933;--b:#2563EB;--z:#F5F7FA;--soft:#6B7785}body{font-family:'IBM Plex Sans',Arial,sans-serif;color:var(--ink)}" +
+    ".page{background:#fff;padding:13mm 14mm 11mm}.hd{display:flex;justify-content:space-between;align-items:baseline;border-bottom:.5mm solid var(--b);padding-bottom:2mm;margin-bottom:4mm}" +
+    ".hd b{font-size:12pt;color:var(--b)}.hd span{font-size:7pt;color:var(--soft);font-family:'IBM Plex Mono'}" +
+    ".grid{display:grid;grid-template-columns:1fr 1fr;column-gap:8mm;grid-auto-rows:min-content}" +
+    ".card{display:flex;align-items:center;gap:3mm;padding:1.6mm 1.5mm;border-bottom:.25mm dotted #C9D2DC;height:16.6mm}.card:nth-child(4n+1),.card:nth-child(4n+2){background:var(--z)}" +
+    ".ph{width:13mm;min-width:13mm;border-radius:1mm;background:#E9EEF3}.noimg{font-size:4.5pt}" +
+    ".tx{flex:1;min-width:0}.nm{font-size:7.4pt;font-weight:600;line-height:1.2;max-height:5.4mm;overflow:hidden}.sk{font-family:'IBM Plex Mono';font-size:5.8pt;color:var(--soft);margin-top:.4mm;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}" +
+    ".prc{font-family:'IBM Plex Mono';font-weight:600;font-size:8.6pt;white-space:nowrap}.stk{font-family:'IBM Plex Mono';font-size:5.8pt;color:var(--b);text-align:right}" +
+    ".ft{display:flex;justify-content:space-between;border-top:.25mm solid #C9D2DC;padding-top:2mm;font-size:6.5pt;color:var(--soft)}" +
+    ".cover{padding:0}.top{background:var(--b);color:#fff;padding:12mm 16mm 10mm;display:flex;justify-content:space-between;font-size:7.5pt;letter-spacing:.12em;text-transform:uppercase}" +
+    ".cm{padding:14mm 16mm 0;flex:1}.cm .logo{margin:0 0 7mm 0}.cm h1{font-size:40pt;font-weight:600;letter-spacing:-.02em;line-height:1.02;word-break:break-word}.cm .sub{font-size:12pt;color:var(--b);margin-top:2mm}" +
+    ".toc{margin-top:12mm;border-top:.5mm solid var(--ink)}.toc div{display:flex;gap:3mm;padding:2.2mm 0;border-bottom:.25mm dotted #C9D2DC;font-size:9pt}.toc i{flex:1;border-bottom:.25mm dotted #9AA5B1;transform:translateY(-1mm)}" +
+    ".toc span{font-family:'IBM Plex Mono';font-size:8pt;color:var(--soft)}.cb{padding:0 16mm 14mm;display:grid;grid-template-columns:1fr 1fr;gap:10mm;font-size:8pt;line-height:1.6}",
+  sampul: c => `<section class='page cover'><div class='top'><span>${c.E(c.eyebrow || "Daftar harga")}</span><span>${c.E(c.edisi)}</span></div>
+    <div class='cm'>${c.logo(0.9, "margin-left:0")}<h1 style='font-size:${c.fit(c.brand, 40, 178, 0.6)}pt'>${c.E(c.brand)}</h1><p class='sub'>${c.E(c.sub)}</p>
+    <div class='toc'>${c.isi.slice(0, 14).map(x => `<div><b style='font-weight:600'>${c.E(x.kat)}</b><i></i><span>${x.jml} produk &middot; hal ${x.hal}</span></div>`).join("")}</div></div>
+    <div class='cb'><div><b>Pemesanan</b><br>${c.kontak}</div><div><b>Keterangan</b><br>${c.catatan}</div></div></section>`,
+  halaman: (c, h) => `<section class='page'><header class='hd'><b>${c.E(h.kat)}${h.pertama ? ` <span style='font-size:7.5pt'>&middot; ${h.jml} produk</span>` : ""}</b><span>${c.E(c.brand)} &middot; hal ${h.no}</span></header>
+    <div class='body'><div class='grid'>${h.kartu.join("")}</div></div><footer class='ft'><span>${c.E(c.sub)}</span><span>${c.E(c.label || "Harga dalam Rupiah")}</span></footer></section>`,
+  kartu: (c, it) => `<article class='card'><div class='ph'>${fotoKartu(it)}</div><div class='tx'><p class='nm'>${c.E(utamaKartu(c, it))}</p>
+    <p class='sk'>${c.E(c.teks === "sku" ? "" : it.sku)}</p></div><div><p class='prc'>${c.rp(it.harga)}</p>${stokKartu(c, it)}</div></article>`,
+  penutup: c => `<section class='page' style='align-items:center;justify-content:center;text-align:center'>${c.logo(0.8)}
+    <p style='font-size:20pt;font-weight:600;margin-top:8mm'>Terima kasih.</p><p style='margin-top:5mm;font-size:8.5pt;color:#6B7785;line-height:1.7'>${c.kontak}<br>${c.E(c.edisi)} &middot; ${c.n} produk</p></section>` },
+
+/* ---------------------------------------------------------------- 9 POLAROID */
+{ id:"polaroid", nama:"Polaroid", cocok:"Handmade, kue & makanan, toko kecil yang hangat",
+  mini:{ sampul:"#E9DFCC", tulis:"#2B2B2B", aksen:"#B5523B", hal:"#E9DFCC", kartu:"#FFFFFF", pola:"polaroid" },
+  css: n => FONT("family=Caveat:wght@500;700&family=Nunito:wght@400;700") +
+    ":root{--kraft:#E9DFCC;--ink:#2B2B2B;--acc:#B5523B}body{font-family:'Nunito',Arial,sans-serif;color:var(--ink)}" +
+    ".page{background:var(--kraft) radial-gradient(rgba(0,0,0,.05) .35mm,transparent .4mm) 0 0/5mm 5mm;padding:13mm 15mm 11mm}" +
+    ".hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:5mm}.hd h2{font-family:'Caveat';font-weight:700;font-size:26pt;line-height:1}" +
+    ".hd span{width:10mm;height:10mm;border:.4mm solid var(--ink);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Caveat';font-size:12pt}" +
+    ".sub2{font-family:'Caveat';font-size:13pt;color:var(--acc);margin:-3mm 0 5mm}" +
+    `.grid{display:grid;grid-template-columns:repeat(${n},1fr);gap:7mm 6mm;padding:1mm}` +
+    ".card{background:#fff;padding:2.2mm 2.2mm 3mm;box-shadow:0 .8mm 1.8mm rgba(0,0,0,.18)}.card:nth-child(odd){transform:rotate(-1.4deg)}.card:nth-child(even){transform:rotate(1.1deg)}" +
+    ".ph{background:#F1ECE3}.prc{font-family:'Caveat';font-weight:700;font-size:15pt;color:var(--acc);margin-top:1.4mm;line-height:1}" +
+    ".nm{font-size:6.4pt;line-height:1.3;height:5mm;overflow:hidden}.sk{font-size:5.4pt;color:#777}.stk{font-size:5.8pt;color:#777}" +
+    ".ft{text-align:center;font-family:'Caveat';font-size:13pt;padding-top:2mm}" +
+    ".cover{align-items:center;justify-content:center;text-align:center}.pol{background:#fff;padding:6mm 6mm 14mm;width:120mm;transform:rotate(-3deg);box-shadow:0 2mm 5mm rgba(0,0,0,.22);position:relative}" +
+    ".pol .ph{background:#F1ECE3}.pol h1{font-family:'Caveat';font-weight:700;font-size:40pt;line-height:1;margin-top:5mm;word-break:break-word}" +
+    ".tape{position:absolute;width:32mm;height:9mm;background:rgba(255,236,170,.75);top:-4mm}.eb{font-family:'Caveat';font-size:16pt;color:var(--acc)}.info{font-size:8pt;line-height:1.7;margin-top:10mm}",
+  sampul: c => `<section class='page cover'><p class='eb'>${c.E(c.eyebrow)} ${c.edisi ? "&middot; " + c.E(c.edisi) : ""}</p>
+    <div style='margin:5mm 0'>${c.logo(0.8)}</div>
+    <div class='pol'><div class='tape' style='left:10mm;transform:rotate(-6deg)'></div><div class='tape' style='right:10mm;transform:rotate(5deg)'></div>
+      <div class='ph'>${c.foto[0] ? `<img src='${c.E(c.foto[0])}' alt='' referrerpolicy='no-referrer'>` : ""}</div><h1 style='font-size:${c.fit(c.brand, 40, 108, 0.46)}pt'>${c.E(c.brand)}</h1>
+      <p style="font-family:'Caveat';font-size:15pt;color:var(--acc)">${c.E(c.sub)}</p></div>
+    <p class='info'>${c.kontak}<br>${c.catatan}</p></section>`,
+  halaman: (c, h) => `<section class='page'><header class='hd'><h2>${c.E(h.kat)}</h2><span>${h.no}</span></header>
+    ${h.pertama ? `<p class='sub2'>${h.jml} produk pilihan</p>` : ""}<div class='body'><div class='grid'>${h.kartu.join("")}</div></div>
+    <footer class='ft'>${c.E(c.brand)}${c.label ? " ~ " + c.E(c.label) : ""}</footer></section>`,
+  kartu: (c, it) => `<article class='card'><div class='ph'>${fotoKartu(it)}</div><p class='prc'>${c.rp(it.harga)}</p>
+    <p class='nm'>${c.E(utamaKartu(c, it))}${kecilKartu(c, it) ? ` <span class='sk'>${c.E(kecilKartu(c, it))}</span>` : ""}</p>${stokKartu(c, it)}</article>`,
+  penutup: c => `<section class='page cover'>${c.logo(0.8)}<h1 style="font-family:'Caveat';font-size:52pt;margin-top:6mm">Terima kasih!</h1>
+    <p class='info' style='margin-top:4mm'>${c.kontak}</p></section>` },
+
+/* ---------------------------------------------------------------- 10 NEON */
+{ id:"neon", nama:"Neon Gelap", cocok:"Gadget, gaming, aksesori elektronik",
+  mini:{ sampul:"#0D1117", tulis:"#E6EDF3", aksen:"#39FF88", hal:"#0D1117", kartu:"#161B22", pola:"neon" },
+  css: n => FONT("family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;600") +
+    ":root{--bg:#0D1117;--sf:#161B22;--ln:#30363D;--ink:#E6EDF3;--g:#39FF88;--c:#22D3EE;--mu:#8B949E}body{font-family:'Space Grotesk',Arial,sans-serif;color:var(--ink)}" +
+    ".page{background:var(--bg);padding:13mm 15mm 11mm}.hd{display:flex;justify-content:space-between;font-family:'JetBrains Mono';font-size:7.5pt;color:var(--g);margin-bottom:6mm}.hd span:last-child{color:var(--mu)}" +
+    ".ttl{margin-bottom:7mm}.ttl h2{font-size:30pt;font-weight:700;letter-spacing:-.02em;line-height:1}.ttl span{font-family:'JetBrains Mono';font-size:7pt;color:var(--c)}" +
+    `.grid{display:grid;grid-template-columns:repeat(${n},1fr);gap:5mm}` +
+    ".card{background:var(--sf);border:.3mm solid var(--ln);border-radius:2mm;padding:2mm;box-shadow:0 0 0 .25mm rgba(57,255,136,.12)}.ph{background:#0B0E13;border-radius:1.3mm}" +
+    ".prc{font-family:'JetBrains Mono';font-weight:600;font-size:10.5pt;color:var(--g);margin-top:2mm}.nm{font-size:6.8pt;line-height:1.3;height:5.4mm;overflow:hidden;margin-top:.5mm}" +
+    ".sk{font-family:'JetBrains Mono';font-size:5.4pt;color:var(--mu)}.stk{font-family:'JetBrains Mono';font-size:5.8pt;color:var(--c);margin-top:.5mm}" +
+    ".ft{display:flex;justify-content:space-between;border-top:.3mm solid var(--ln);padding-top:2mm;font-family:'JetBrains Mono';font-size:6.2pt;color:var(--mu)}" +
+    ".cover{background-color:var(--bg);background-image:repeating-linear-gradient(0deg,rgba(57,255,136,.07) 0 .25mm,transparent .25mm 10mm),repeating-linear-gradient(90deg,rgba(57,255,136,.07) 0 .25mm,transparent .25mm 10mm);padding:18mm;justify-content:space-between}" +
+    ".cover h1{font-size:54pt;font-weight:700;letter-spacing:-.03em;line-height:.95;color:var(--g);word-break:break-word}.cover .sub{font-family:'JetBrains Mono';font-size:10pt;color:var(--c);margin-top:5mm}" +
+    ".cover .logo{margin:0 0 8mm 0}.ctx{font-family:'JetBrains Mono';font-size:7.5pt;line-height:1.8;color:var(--mu)}",
+  sampul: c => `<section class='page cover'><div class='hd'><span>// ${c.E(c.eyebrow || "katalog")}</span><span>${c.E(c.edisi)}</span></div>
+    <div>${c.logo(0.9, "margin-left:0")}<h1 style='font-size:${c.fit(c.brand, 54, 174, 0.64)}pt'>${c.E(c.brand)}</h1><p class='sub'>&gt; ${c.E(c.sub)}</p></div>
+    <div class='ctx'>${c.kontak}<br>${c.catatan}</div></section>`,
+  halaman: (c, h) => `<section class='page'><header class='hd'><span>// ${c.E(h.kat)}</span><span>[${dua(h.no)}]</span></header>
+    <div class='body'>${h.pertama ? `<div class='ttl'><h2>${c.E(h.kat)}</h2><span>${h.jml} item</span></div>` : ""}<div class='grid'>${h.kartu.join("")}</div></div>
+    <footer class='ft'><span>${c.E(c.brand)}</span><span>${c.E(c.label)}</span></footer></section>`,
+  kartu: (c, it) => `<article class='card'><div class='ph'>${fotoKartu(it)}</div><p class='prc'>${c.rp(it.harga)}</p>
+    <p class='nm'>${c.E(utamaKartu(c, it))}${kecilKartu(c, it) ? ` <span class='sk'>${c.E(kecilKartu(c, it))}</span>` : ""}</p>${stokKartu(c, it)}</article>`,
+  penutup: c => `<section class='page cover' style='justify-content:center'>${c.logo(0.7, "margin-left:0")}<h1 style='font-size:36pt'>&gt; terima_kasih</h1><p class='ctx' style='margin-top:8mm'>${c.kontak}</p></section>` },
+
+/* ---------------------------------------------------------------- 11 BOTANI */
+{ id:"botani", nama:"Botani", cocok:"Skincare, herbal, makanan sehat, tanaman",
+  mini:{ sampul:"#F6F4EC", tulis:"#3E4A2F", aksen:"#8A9A5B", hal:"#F6F4EC", kartu:"#FFFFFF", pola:"daun" },
+  css: n => FONT("family=Lora:ital,wght@0,500;0,600;1,400&family=Nunito:wght@400;700") +
+    ":root{--cr:#F6F4EC;--sg:#8A9A5B;--dp:#3E4A2F;--bl:#E9C9B9}body{font-family:'Nunito',Arial,sans-serif;color:var(--dp)}" +
+    ".page{background:var(--cr);padding:13mm 15mm 11mm}.hd{display:flex;align-items:center;gap:4mm;justify-content:center;margin-bottom:6mm}" +
+    ".hd i{flex:1;height:.3mm;background:var(--sg);opacity:.6}.hd h2{font-family:'Lora';font-style:italic;font-weight:400;font-size:17pt}" +
+    ".leaf{width:5mm;height:5mm;background:var(--sg);border-radius:0 100% 0 100%;display:inline-block}" +
+    ".cnt{text-align:center;font-size:7pt;letter-spacing:.14em;text-transform:uppercase;color:var(--sg);margin:-3mm 0 6mm}" +
+    `.grid{display:grid;grid-template-columns:repeat(${n},1fr);gap:5mm}` +
+    ".card{background:#fff;border-radius:4mm;padding:2.2mm 2.2mm 3mm}.ph{border-radius:3mm;background:#F0EEE4}" +
+    ".nm{font-family:'Lora';font-weight:500;font-size:8.2pt;line-height:1.2;margin-top:2mm;height:6.8mm;overflow:hidden}" +
+    ".prc{display:inline-block;margin-top:1.4mm;background:var(--sg);color:#fff;border-radius:99mm;padding:.7mm 3mm;font-size:7.6pt;font-weight:700}" +
+    ".sk{display:block;font-family:'Nunito';font-size:5.4pt;color:#8a8f80}.stk{font-size:5.8pt;color:#8a8f80;margin-top:.8mm}" +
+    ".ft{text-align:center;font-size:6.5pt;color:var(--sg);padding-top:3mm;letter-spacing:.1em;text-transform:uppercase}" +
+    ".cover{padding:18mm 16mm;justify-content:center}.circ{position:absolute;border-radius:50%;background:var(--sg);opacity:.18}" +
+    ".lf{position:absolute;background:var(--sg);border-radius:0 100% 0 100%}.cover h1{font-family:'Lora';font-weight:600;font-size:46pt;line-height:1.02;word-break:break-word;position:relative}" +
+    ".cover .sub{font-family:'Lora';font-style:italic;font-size:14pt;color:var(--sg);margin-top:4mm;position:relative}.cover .logo{margin:0 0 8mm 0;position:relative}" +
+    ".cinfo{position:relative;margin-top:14mm;font-size:8pt;line-height:1.8;max-width:120mm}",
+  sampul: c => `<section class='page cover'><div class='circ' style='width:150mm;height:150mm;top:-50mm;right:-60mm'></div>
+    <div class='lf' style='width:40mm;height:40mm;top:22mm;right:30mm;opacity:.55'></div><div class='lf' style='width:26mm;height:26mm;top:58mm;right:62mm;transform:rotate(90deg);opacity:.35'></div>
+    <div class='circ' style='width:70mm;height:70mm;bottom:-20mm;left:-20mm;background:var(--bl);opacity:.55'></div>
+    <p style='position:relative;font-size:7.5pt;letter-spacing:.18em;text-transform:uppercase;color:var(--sg);margin-bottom:8mm'>${c.E(c.eyebrow)} ${c.edisi ? "&middot; " + c.E(c.edisi) : ""}</p>
+    ${c.logo(0.9, "margin-left:0")}<h1 style='font-size:${c.fit(c.brand, 46, 178, 0.6)}pt'>${c.E(c.brand)}</h1><p class='sub'>${c.E(c.sub)}</p><p class='cinfo'>${c.kontak}<br>${c.catatan}</p></section>`,
+  halaman: (c, h) => `<section class='page'><header class='hd'><i></i><span class='leaf'></span><h2>${c.E(h.kat)}</h2><span class='leaf' style='transform:scaleX(-1)'></span><i></i></header>
+    ${h.pertama ? `<p class='cnt'>${h.jml} produk</p>` : ""}<div class='body'><div class='grid'>${h.kartu.join("")}</div></div>
+    <footer class='ft'>${c.E(c.brand)} &middot; ${h.no}${c.label ? " &middot; " + c.E(c.label) : ""}</footer></section>`,
+  kartu: (c, it) => `<article class='card'><div class='ph'>${fotoKartu(it)}</div><p class='nm'>${c.E(utamaKartu(c, it))}${kecilKartu(c, it) ? `<span class='sk'>${c.E(kecilKartu(c, it))}</span>` : ""}</p>
+    <p class='prc'>${c.rp(it.harga)}</p>${stokKartu(c, it)}</article>`,
+  penutup: c => `<section class='page cover' style='background:var(--sg);color:var(--cr);align-items:center;text-align:center'>${c.logo(0.8)}
+    <h1 style='font-style:italic;font-weight:500;font-size:36pt'>Terima kasih</h1><p class='cinfo' style='margin:8mm auto 0'>${c.kontak}</p></section>` },
+
+/* ---------------------------------------------------------------- 12 MONOKROM */
+{ id:"monokrom", nama:"Monokrom Mewah", cocok:"Fesyen, sepatu, tas, parfum",
+  mini:{ sampul:"#0A0A0A", tulis:"#FAFAFA", aksen:"#9A9A9A", hal:"#FAFAFA", kartu:"#0A0A0A", pola:"penuh" },
+  css: n => FONT("family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,500;1,6..96,400&family=Montserrat:wght@400;600") +
+    ":root{--k:#0A0A0A;--w:#FAFAFA;--g:#9A9A9A}body{font-family:'Montserrat',Arial,sans-serif;color:var(--k)}" +
+    ".page{background:var(--w);padding:13mm 15mm 11mm}.hd{display:grid;grid-template-columns:1fr auto 1fr;align-items:baseline;border-bottom:.2mm solid var(--k);padding-bottom:2mm;margin-bottom:6mm;font-size:6.2pt;letter-spacing:.3em;text-transform:uppercase}" +
+    ".hd em{font-family:'Bodoni Moda';font-style:italic;font-size:13pt;letter-spacing:.02em;text-transform:none}.hd span:last-child{text-align:right}" +
+    ".ttl{text-align:center;margin-bottom:7mm}.ttl h2{font-family:'Bodoni Moda';font-weight:400;font-size:34pt;letter-spacing:.02em}.ttl span{font-size:6.4pt;letter-spacing:.4em;text-transform:uppercase;color:var(--g)}" +
+    `.grid{display:grid;grid-template-columns:repeat(${n},1fr);gap:4mm}` +
+    ".ph{aspect-ratio:4/5;background:#E8E8E8}.ov{position:absolute;left:0;right:0;bottom:0;padding:8mm 2.4mm 2.2mm;background:linear-gradient(transparent,rgba(0,0,0,.72));color:#fff}" +
+    ".nm{font-size:5.8pt;letter-spacing:.14em;text-transform:uppercase;line-height:1.3;max-height:4.8mm;overflow:hidden}.prc{font-family:'Bodoni Moda';font-size:11.5pt;margin-top:.5mm}" +
+    ".sk{font-size:5pt;opacity:.75}.stk{font-size:5.4pt;letter-spacing:.14em;opacity:.8}.noimg{color:#555}" +
+    ".ft{display:flex;justify-content:space-between;border-top:.2mm solid var(--k);padding-top:2mm;font-size:6pt;letter-spacing:.3em;text-transform:uppercase}" +
+    ".cover{background:var(--k);color:var(--w);padding:0}.fr{flex:1;margin:10mm;border:.25mm solid rgba(255,255,255,.6);display:flex;flex-direction:column;justify-content:space-between;align-items:center;text-align:center;padding:14mm 12mm}" +
+    ".fr .t{font-size:6.6pt;letter-spacing:.45em;text-transform:uppercase;color:var(--g)}.fr h1{font-family:'Bodoni Moda';font-weight:400;font-size:56pt;line-height:1;word-break:break-word}" +
+    ".fr .sub{font-size:7pt;letter-spacing:.5em;text-transform:uppercase;margin-top:6mm}.fr .logo{margin-bottom:8mm}.fr .i{font-size:7.4pt;line-height:1.9;color:#cfcfcf}",
+  sampul: c => `<section class='page cover'><div class='fr'><p class='t'>${c.E(c.eyebrow)} &nbsp; ${c.E(c.edisi)}</p>
+    <div>${c.logo(0.9)}<h1 style='font-size:${c.fit(c.brand, 56, 166, 0.62)}pt'>${c.E(c.brand)}</h1><p class='sub'>${c.E(c.sub)}</p></div><p class='i'>${c.kontak}<br>${c.catatan}</p></div></section>`,
+  halaman: (c, h) => `<section class='page'><header class='hd'><span>${c.E(c.brand)}</span><em>${c.E(h.kat)}</em><span>${dua(h.no)}</span></header>
+    <div class='body'>${h.pertama ? `<div class='ttl'><h2>${c.E(h.kat)}</h2><br><span>${h.jml} produk</span></div>` : ""}<div class='grid'>${h.kartu.join("")}</div></div>
+    <footer class='ft'><span>${c.E(c.sub)}</span><span>${c.E(c.label)}</span></footer></section>`,
+  kartu: (c, it) => `<article class='card'><div class='ph'>${fotoKartu(it)}<div class='ov'><p class='nm'>${c.E(utamaKartu(c, it))}</p>
+    <p class='prc'>${c.rp(it.harga)}</p>${kecilKartu(c, it) ? `<p class='sk'>${c.E(kecilKartu(c, it))}</p>` : ""}${stokKartu(c, it)}</div></div></article>`,
+  penutup: c => `<section class='page cover'><div class='fr' style='justify-content:center'>${c.logo(0.8)}
+    <h1 style='font-style:italic;font-size:40pt'>Terima kasih.</h1><p class='i' style='margin-top:8mm'>${c.kontak}</p></div></section>` },
+];
+const temaKatalog = id => TEMA_KATALOG.find(t => t.id === id) || TEMA_KATALOG[0];
+
+/* ---------- ukuran logo: sama beratnya, apa pun bentuk berkasnya ----------
+   Mengunci TINGGI logo membuat logo lebar tampak raksasa dan logo tinggi tampak
+   mungil. Yang dikunci di sini LUASNYA: logo persegi, melebar, atau meninggi
+   sama-sama menempati bidang yang kira-kira sama, jadi terlihat sama "besar"
+   di mata — cara yang sama dipakai dinding logo sponsor. Ukuran berkas asli
+   (500 px atau 5000 px) tidak berpengaruh sama sekali. */
+const LUAS_LOGO = { kecil:260, sedang:440, besar:720 };
+function ukuranLogo(k, skala){
+  const s = skala || 1;
+  const A = (LUAS_LOGO[k.logoUkuran] || LUAS_LOGO.sedang) * s * s;
+  const r = Math.min(8, Math.max(0.2, num(k.logoRasio) || 1));
+  let h = Math.sqrt(A / r), w = h * r;
+  const MW = 120 * s, MH = 32 * s;
+  if (w > MW){ w = MW; h = w / r; }
+  if (h > MH){ h = MH; w = h * r; }
+  return { w: Math.round(w * 10) / 10, h: Math.round(h * 10) / 10 };
 }
 
-/* ---------- merangkai HTML katalog ---------- */
-function bangunKatalogHTML(items, k){
-  const nCols = Math.min(6, Math.max(2, Math.round(num(k.kolom) || 4)));
-  const nRow1 = Math.max(1, Math.round(num(k.baris1) || 3));
-  const nRow2 = Math.max(1, Math.round(num(k.baris2) || 4));
-  const putih = k.tema === "putih";
-  const E = esc;
-  const kontak = [["WhatsApp ", k.wa], ["Instagram ", k.ig], ["TikTok ", k.tt], ["Facebook ", k.fb]]
-    .filter(([, v]) => String(v || "").trim()).map(([l, v]) => l + E(String(v).trim())).join(" &middot; ");
-  const logoH = Math.min(60, Math.max(5, num(k.logoTinggi) || 22));
-  const logoHTML = String(k.logo || "").trim()
-    ? `<div class='logo' style="height:${logoH}mm;width:100%;background:url('${E(String(k.logo).trim())}') center center / contain no-repeat"></div>` : "";
-  const inisial = (String(k.brand || "").trim() + "S").charAt(0).toUpperCase();
-  const pakaiStok = !!k.tampilStok;
-  const kartu = it => {
-    const foto = it.foto
-      ? `<img src='${E(it.foto)}' alt='' referrerpolicy='no-referrer'>`
-      : "<div class='noimg'>Tanpa Foto</div>";
-    const ket = pakaiStok ? `<p class='stk'>Stok ${RE_ID.format(Math.max(0, Math.round(num(it.stok))))}</p>` : "";
-    return putih
-      ? `<article class='card'><div class='ph'>${foto}</div><p class='sku'>${E(it.sku)}</p><p class='prc'>${rupiahKatalog(it.harga)}</p>${ket}</article>`
-      : `<article class='card'><div class='ph'>${foto}</div><p class='prc'>${rupiahKatalog(it.harga)}</p><p class='sku'>${E(it.sku)}</p>${ket}</article>`;
-  };
-  const h = [];
-  h.push("<!DOCTYPE html><html lang='id'><head><meta charset='utf-8'>");
-  h.push(`<title>${E(k.brand)} &mdash; ${E(k.sub)}</title>`);
-  h.push(`<style>${gayaKatalog(putih ? "putih" : "noir", nCols)}</style></head><body>`);
-  /* sampul */
-  if (putih){
-    h.push(`<section class='page cover'><div class='deco'></div><div class='mark'>${E(inisial)}</div><div class='cov-in'>`);
-    h.push(`<div class='cov-top'><span>${E(k.eyebrow)}</span><span>${E(k.edisi)}</span></div>`);
-    h.push(`<div class='cov-mid'>${logoHTML}<h1>${E(k.brand)}</h1><div class='cov-rule'></div><p class='cov-sub'>${E(k.sub)}</p></div>`);
-    h.push(`<div class='cov-bot'><div><p class='lbl'>PEMESANAN</p><p class='txt'>${kontak}</p></div>`);
-    h.push(`<div><p class='lbl'>KETERANGAN</p><p class='txt'>${E(k.catatan1)}<br>${E(k.catatan2)}</p></div></div></div></section>`);
-  } else {
-    h.push("<section class='page cover'><div class='cov-in'>");
-    h.push(`<div class='cov-top'><span>${E(k.eyebrow)}</span><span>${E(k.edisi)}</span></div>`);
-    h.push(`<div class='cov-mid'>${logoHTML}<h1>${E(k.brand)}</h1><div class='cov-rule'></div><p class='cov-sub'>${E(k.sub)}</p></div>`);
-    h.push(`<div class='cov-bot'><div><p class='lbl'>Pemesanan</p><p class='txt'>${kontak}</p></div>`);
-    h.push(`<div><p class='lbl'>Keterangan</p><p class='txt'>${E(k.catatan1)}<br>${E(k.catatan2)}</p></div></div></div></section>`);
-  }
-  /* isi: per kategori, halaman pertama berpita judul */
-  const footKiri = `${E(k.brand)} &middot; ${E(k.sub)}`;
-  let noHal = 0, i = 0;
+/* Produk per halaman — bawaannya kolom × baris dari pengaturan, kecuali template
+   yang punya aturan sendiri (Daftar Harga, Majalah). */
+function kapasitasTema(t, c, pertama){
+  if (t.kapasitas) return Math.max(1, t.kapasitas(c, pertama));
+  return c.kolom * (pertama ? c.baris1 : c.baris2);
+}
+function susunHalaman(items, t, c){
+  const hal = [];
+  let i = 0, no = 0, nomorKat = 0;
   while (i < items.length){
     let j = i; while (j + 1 < items.length && items[j + 1].kat === items[i].kat) j++;
+    nomorKat++;
     const kat = items[i].kat, jml = j - i + 1;
     let pos = i, pertama = true;
     while (pos <= j){
-      const kap = nCols * (pertama ? nRow1 : nRow2);
-      const batas = Math.min(j, pos + kap - 1);
-      noHal++;
-      const nomor = String(noHal).padStart(2, "0");
-      if (putih){
-        h.push("<section class='page'><div class='deco'></div><div class='body'>");
-        if (pertama) h.push(`<header class='kat'><h2>${E(kat)}</h2><span><span class='dia'>&#9670;</span>${jml} SKU</span></header>`);
-      } else {
-        h.push(`<section class='page'><header class='run'><span><span class='dia'>&#9670;</span>${E(kat)}</span><span class='pg'>${nomor}</span></header><div class='body'>`);
-        if (pertama) h.push(`<div class='band'><h2>${E(kat)}</h2><span>${jml} SKU</span></div>`);
-      }
-      h.push("<div class='grid'>");
-      for (let t = pos; t <= batas; t++) h.push(kartu(items[t]));
-      h.push("</div></div>");
-      h.push(putih
-        ? `<footer class='foot'><span>${footKiri}</span><span class='pg'>${nomor}</span><span>${E(k.labelKanan)}</span></footer></section>`
-        : `<div class='strip'><span>${E(k.brand)}</span><span class='b'>${E(k.labelKanan)}</span></div></section>`);
+      const batas = Math.min(j, pos + kapasitasTema(t, c, pertama) - 1);
+      no++;
+      hal.push({ kat, jml, no, pertama, nomorKat, dari: pos, sampai: batas });
       pos = batas + 1; pertama = false;
     }
     i = j + 1;
   }
-  /* penutup */
-  if (putih){
-    h.push(`<section class='page'><div class='deco'></div><div class='mark'>${E(inisial)}</div><div class='body end'>`);
-    h.push("<div class='end-rule'></div><p class='end-thanks'>Terima kasih atas kepercayaan Anda.</p>");
-    h.push(`<p class='end-contact'>${kontak}</p><p class='end-meta'>${E(k.edisi)} &middot; ${items.length} SKU</p>`);
-    h.push(`</div><footer class='foot'><span>${footKiri}</span><span class='pg'></span><span>${E(k.labelKanan)}</span></footer></section>`);
-  } else {
-    h.push(`<section class='page cover end'><div class='cov-in'><div class='end-mid'>${logoHTML}`);
-    h.push("<p class='end-thanks'>Terima kasih atas kepercayaan Anda.</p><div class='cov-rule'></div>");
-    h.push(`<p class='end-contact'>${kontak}</p><p class='end-meta'>${E(k.edisi)} &middot; ${items.length} SKU</p>`);
-    h.push("</div></div></section>");
+  return hal;
+}
+function konteksKatalog(items, k){
+  const E = esc;
+  const kontak = [["WhatsApp ", k.wa], ["Instagram ", k.ig], ["TikTok ", k.tt], ["Facebook ", k.fb]]
+    .filter(([, v]) => String(v || "").trim()).map(([l, v]) => l + E(String(v).trim())).join(" &middot; ");
+  const logoUrl = String(k.logo || "").trim();
+  const c = {
+    E, kontak, rp: rupiahKatalog, n: items.length,
+    brand: k.brand, sub: k.sub, eyebrow: k.eyebrow, edisi: k.edisi, label: k.labelKanan,
+    catatan: [k.catatan1, k.catatan2].filter(x => String(x || "").trim()).map(E).join("<br>"),
+    inisial: (String(k.brand || "").trim() + "K").charAt(0).toUpperCase(),
+    kolom: Math.min(6, Math.max(2, Math.round(num(k.kolom) || 4))),
+    baris1: Math.max(1, Math.round(num(k.baris1) || 3)),
+    baris2: Math.max(1, Math.round(num(k.baris2) || 4)),
+    stok: !!k.tampilStok, teks: k.teksKartu || "keduanya",
+    foto: items.filter(it => it.foto).slice(0, 4).map(it => it.foto),
+    warnaKat: (nomor, daftar) => daftar[(nomor - 1) % daftar.length],
+    /* Nama toko bisa "ABC" atau "Dunia Gelang Official Store". Huruf judul sampul
+       dikecilkan secukupnya sampai kata terpanjangnya muat satu baris, supaya
+       tidak ada kata yang terpotong di tengah. */
+    fit: (teks, maksPt, lebarMm, faktor) => {
+      const kata = String(teks || "").split(/\s+/).reduce((a, w) => Math.max(a, w.length), 1);
+      return Math.max(14, Math.min(maksPt, Math.floor(lebarMm / (kata * (faktor || 0.62) * 0.3528))));
+    },
+    logo: (skala, gayaTambahan) => {
+      if (!logoUrl) return "";
+      const u = ukuranLogo(k, skala);
+      return `<img class='logo' src='${E(logoUrl)}' alt='' referrerpolicy='no-referrer' style='width:${u.w}mm;height:${u.h}mm;${gayaTambahan || ""}'>`;
+    },
+    isi: [],
+  };
+  return c;
+}
+function hitungHalaman(items, k){
+  const t = temaKatalog(k.tema), c = konteksKatalog(items, k);
+  const hal = susunHalaman(items, t, c);
+  return { hal: hal.length + 2, kategori: new Set(items.map(i => i.kat)).size };
+}
+function bangunKatalogHTML(items, k){
+  const t = temaKatalog(k.tema);
+  const c = konteksKatalog(items, k);
+  const hal = susunHalaman(items, t, c);
+  /* daftar isi (dipakai template Daftar Harga): halaman 1 = sampul */
+  for (const h of hal) if (h.pertama) c.isi.push({ kat: h.kat, jml: h.jml, hal: h.no + 1 });
+  const h = [];
+  h.push(`<!DOCTYPE html><html lang='id'><head><meta charset='utf-8'><title>${esc(k.brand)} &mdash; ${esc(k.sub)}</title>`);
+  /* Gaya dasar lebih dulu, gaya template sesudahnya — supaya template yang menang
+     kalau keduanya mengatur hal yang sama. Dua lembar gaya terpisah karena @import
+     huruf harus berada di baris paling atas lembarnya. */
+  h.push(`<style>${DASAR_KATALOG}</style><style>${t.css(c.kolom)}</style></head><body>`);
+  h.push(t.sampul(c));
+  for (const hl of hal){
+    const kartu = [];
+    for (let x = hl.dari; x <= hl.sampai; x++) kartu.push(t.kartu(c, items[x], x - hl.dari));
+    h.push(t.halaman(c, Object.assign({}, hl, { kartu })).replace("<section class='page", `<section data-hal='${hl.pertama ? 1 : 2}' class='page`));
   }
+  h.push(t.penutup(c));
   h.push("</body></html>");
   return h.join("\n");
 }
+
+/* ---------- gambar kecil di galeri pilihan template ----------
+   Sketsa, bukan hasil cetak sungguhan — cukup untuk membedakan warna dan tata
+   letaknya sekilas, dan ringan sehingga halaman pengaturan tetap cepat. */
+function miniTema(t){
+  const m = t.mini;
+  const kotak = (i) => {
+    const bg = m.kartu, ph = m.pola === "penuh" ? "#6f6f6f" : "rgba(0,0,0,.14)";
+    if (m.pola === "daftar") return `<div style="display:flex;gap:3px;align-items:center;background:${i % 4 < 2 ? m.kartu : "transparent"};padding:2px"><i style="width:9px;height:9px;background:${ph};display:block"></i><i style="flex:1;height:3px;background:rgba(0,0,0,.25);display:block"></i><i style="width:10px;height:3px;background:${m.aksen};display:block"></i></div>`;
+    const rad = m.pola === "bulat" ? "4px" : m.pola === "lengkung" ? "50% 50% 2px 2px / 40% 40% 2px 2px" : m.pola === "neon" ? "3px" : "0";
+    const rot = m.pola === "polaroid" ? `transform:rotate(${i % 2 ? 2 : -2}deg);box-shadow:0 1px 2px rgba(0,0,0,.2);` : "";
+    const brd = m.pola === "label" ? "border:1.5px solid #111;" : m.pola === "neon" ? `border:1px solid ${m.aksen}55;` : m.pola === "pita" ? `border-bottom:2px solid ${m.aksen};` : "";
+    const fit = m.pola === "fitur" && i === 0 ? "grid-column:span 2;grid-row:span 2;" : "";
+    return `<div style="${fit}${rot}${brd}background:${bg};padding:${m.pola === "penuh" ? 0 : 2}px;border-radius:${m.pola === "bulat" || m.pola === "daun" ? "4px" : "0"}">
+      <div style="aspect-ratio:${m.pola === "penuh" ? "4/5" : "1"};background:${ph};border-radius:${rad};position:relative">${m.pola === "label" ? `<i style="position:absolute;right:-2px;bottom:2px;width:12px;height:5px;background:${m.aksen};display:block"></i>` : ""}</div>
+      ${m.pola === "penuh" ? "" : `<div style="height:3px;width:60%;margin-top:2px;background:${m.aksen}"></div>`}</div>`;
+  };
+  const daftar = m.pola === "daftar";
+  const kepala = m.pola === "pita" ? `<div style="height:9px;background:#1C1B18;margin-bottom:4px"></div>`
+    : m.pola === "label" ? `<div style="height:9px;background:#111;margin:-5px -5px 4px"></div>`
+    : `<div style="height:3px;width:${m.pola === "garis" ? 100 : 45}%;background:${m.pola === "garis" ? "#111" : m.aksen};margin:${m.pola === "daun" ? "0 auto 5px" : "0 0 5px"}"></div>`;
+  const sampul = `<div style="flex:1;background:${m.sampul};border-radius:3px;position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:${m.pola === "garis" || m.pola === "neon" ? "flex-end" : "center"};align-items:${m.pola === "garis" || m.pola === "neon" || m.pola === "daun" ? "flex-start" : "center"};padding:7px">
+      ${m.pola === "lengkung" ? `<div style="position:absolute;inset:14px 10px 8px;background:#F4ECE1;border-radius:40px 40px 0 0"></div>` : ""}
+      ${m.pola === "fitur" ? `<div style="position:absolute;right:0;top:0;bottom:0;width:52%;background:repeating-linear-gradient(0deg,#e9e5dc 0 48%,#d9d4c8 48% 52%)"></div>` : ""}
+      ${m.pola === "label" ? `<div style="position:absolute;left:-10px;right:-10px;top:42%;height:16px;background:#111;transform:rotate(-7deg)"></div>` : ""}
+      ${m.pola === "bulat" ? `<div style="position:absolute;width:40px;height:40px;border-radius:50%;background:#FDE2E4;left:-12px;top:-10px"></div>` : ""}
+      <div style="position:relative;width:${m.pola === "garis" ? 70 : 55}%;height:${m.pola === "garis" ? 9 : 6}px;background:${m.pola === "label" ? "#fff" : m.pola === "fitur" ? "#fff" : m.tulis};${m.pola === "fitur" ? "align-self:flex-start;width:35%" : ""}"></div>
+      <div style="position:relative;width:32%;height:3px;margin-top:4px;background:${m.aksen}"></div></div>`;
+  const halaman = `<div style="flex:1;background:${m.hal};border-radius:3px;padding:5px;overflow:hidden">${kepala}
+      <div style="display:grid;grid-template-columns:${daftar ? "1fr 1fr" : "repeat(3,1fr)"};gap:${daftar ? "2px 4px" : "4px"}">${Array.from({ length: daftar ? 10 : 6 }, (_, i) => kotak(i)).join("")}</div></div>`;
+  return `<div style="display:flex;gap:5px;height:118px">${sampul}${halaman}</div>`;
+}
+
 
 /* ---------- pratinjau & cetak ----------
    Katalog dibuka di jendela pratinjau di dalam aplikasi, bukan file yang harus
    dicari lalu dibuka sendiri. Tombol Cetak langsung membuka dialog cetak peramban
    — pilih "Simpan sebagai PDF", selesai. Pengaturan kertas A4 tanpa margin dan
    warna latar sudah ditanam di dalam katalognya, jadi tidak perlu diatur lagi. */
+/* Kartu yang keluar dari batas kertas — dihitung sungguhan di halaman yang sudah
+   tergambar, bukan ditaksir. Mengembalikan jenis halaman yang luber. */
+function luberKatalog(doc){
+  const hasil = { pertama:false, lanjut:false };
+  for (const pg of doc.querySelectorAll("section[data-hal]")){
+    const ft = pg.querySelector(".strip,.foot,.ft");
+    const batas = (ft ? ft.getBoundingClientRect().top : pg.getBoundingClientRect().bottom) + 1;
+    for (const cd of pg.querySelectorAll(".card")){
+      if (cd.getBoundingClientRect().bottom > batas){
+        if (pg.dataset.hal === "1") hasil.pertama = true; else hasil.lanjut = true;
+        break;
+      }
+    }
+  }
+  return hasil;
+}
 function bukaPratinjauKatalog(){
-  const k = KS();
-  const { items } = katalogTerpilih(k);
-  if (!items.length){
-    pesan("Tidak ada SKU yang lolos saringan.\n\n" +
+  const k0 = KS();
+  if (!katalogTerpilih(k0).items.length){
+    pesan("Tidak ada produk yang lolos saringan.\n\n" +
       "Periksa Mode Seleksi di Pengaturan Katalog:\n" +
-      "• Stok di atas 0 — hanya SKU yang stoknya lebih dari nol\n" +
+      "• Stok di atas 0 — hanya produk yang stoknya lebih dari nol\n" +
       "• Bertanda x — hanya baris yang kolom Tampilkan-nya berisi x\n" +
-      "• Semua — seluruh SKU", "Katalog kosong");
+      "• Semua — seluruh produk", "Katalog kosong");
     return;
   }
-  const html = bangunKatalogHTML(items, k);
-  const { hal } = hitungHalaman(items, k);
   let lapis = document.getElementById("ktpv");
-  if (!lapis){
-    lapis = document.createElement("div"); lapis.id = "ktpv";
-    document.body.appendChild(lapis);
-  }
+  if (!lapis){ lapis = document.createElement("div"); lapis.id = "ktpv"; document.body.appendChild(lapis); }
   lapis.innerHTML = `<div class="ktpv-bar">
-      <strong>${esc(k.brand)}</strong>
-      <span class="status">${items.length} SKU · ${hal} halaman · tema ${k.tema === "putih" ? "Putih" : "Noir"}</span>
+      <strong id="ktpv-judul"></strong><span class="status" id="ktpv-info"></span>
       <span class="status" id="ktpv-foto">Memuat foto…</span>
       <span class="spacer"></span>
       <button type="button" class="btn" id="ktpv-html">Unduh HTML</button>
       <button type="button" class="btn primary" id="ktpv-cetak">Cetak / Simpan PDF</button>
       <button type="button" class="btn ghost" id="ktpv-tutup">Tutup</button>
-    </div><iframe id="ktpv-frame" title="Pratinjau katalog"></iframe>`;
+    </div><div id="ktpv-sesuai" class="hint" style="margin:0;border-radius:0" hidden></div><iframe id="ktpv-frame" title="Pratinjau katalog"></iframe>`;
   lapis.hidden = false;
   document.body.style.overflow = "hidden";
   const fr = document.getElementById("ktpv-frame");
-  fr.srcdoc = html;
+  let html = "", k = k0, coba = 0;
+  const catatan = [];
+  const gambar = () => {
+    k = KS();
+    const { items } = katalogTerpilih(k);
+    html = bangunKatalogHTML(items, k);
+    const { hal } = hitungHalaman(items, k);
+    document.getElementById("ktpv-judul").textContent = k.brand;
+    document.getElementById("ktpv-info").textContent = `${items.length} produk · ${hal} halaman · ${temaKatalog(k.tema).nama}`;
+    fr.srcdoc = html;
+  };
   fr.onload = () => {
-    /* Foto dimuat lebih dulu sebelum mencetak; kalau belum, halaman PDF-nya bolong. */
     const doc = fr.contentDocument; if (!doc) return;
+    /* Kartu tidak muat di kertas? Turunkan jumlah baris satu per satu sampai muat,
+       lalu simpan ke pengaturan supaya hitungan halaman di mana-mana ikut benar.
+       Terjadi kalau misalnya kolom dikurangi jadi 3: kartu melebar, jadi lebih
+       tinggi, dan 4 baris tidak lagi muat di A4. */
+    const t = temaKatalog(k.tema);
+    if (!t.aturSendiri && coba < 6){
+      const L = luberKatalog(doc);
+      let ubah = false;
+      if (L.pertama && num(k.baris1) > 1){ setKS("baris1", num(k.baris1) - 1); ubah = true; }
+      if (L.lanjut && num(k.baris2) > 1){ setKS("baris2", num(k.baris2) - 1); ubah = true; }
+      if (ubah){ coba++; gambar(); return; }
+    }
+    if (coba){
+      const kot = document.getElementById("ktpv-sesuai");
+      kot.hidden = false;
+      kot.innerHTML = `<strong>Baris per halaman disesuaikan otomatis</strong> — jadi ${num(KS().baris1)} baris di halaman kategori
+        dan ${num(KS().baris2)} baris di halaman lanjutan, supaya semua kartu muat di kertas A4 dengan ${num(KS().kolom)} kolom.
+        Pengaturannya sudah ikut diperbarui.`;
+      touch(); coba = 99;
+    }
     const img = [...doc.images];
     const lbl = document.getElementById("ktpv-foto");
     let beres = 0, gagal = 0;
@@ -3390,6 +3799,7 @@ function bukaPratinjauKatalog(){
     if (dl){ try { await dl.save({ filename: nama, data: html }); note("Katalog terunduh"); return; } catch(e){} }
     openText("Katalog HTML", "Salin seluruh isi di bawah ke berkas bernama " + nama + ".", html);
   };
+  gambar();
 }
 
 /* ---------- foto: kecilkan lalu unggah ke Supabase Storage ----------
@@ -3462,11 +3872,12 @@ async function prosesUnggahKatalog(files){
     } else if (t.jenis === "logo"){
       note("Mengunggah logo…");
       const lama = KS().logo;
-      setKS("logo", await unggahFotoKatalog(files[0], "logo"));
+      const { url, rasio } = await unggahLogoKatalog(files[0]);
+      setKS("logo", url); setKS("logoRasio", rasio);
       await hapusFotoLama(lama);
       touch(); note("Logo tersimpan");
     } else if (t.jenis === "massal"){
-      /* Nama berkas = nomor SKU. "1BOX-SLVR-(16-19).jpg" langsung menempel ke SKU itu. */
+      /* Nama berkas = nomor SKU. "KAOS-HITAM-L.jpg" langsung menempel ke SKU itu. */
       const idx = new Map((S.katalog || []).map((r, i) => [normKode(r.sku), i]));
       let ok = 0; const tak = [], salah = [];
       for (let n = 0; n < files.length; n++){
@@ -3484,7 +3895,7 @@ async function prosesUnggahKatalog(files){
       touch();
       pesan(`${ok} foto terpasang ke SKU-nya.` +
         (tak.length ? `\n\n${tak.length} berkas tidak menemukan SKU yang namanya sama:\n` + tak.slice(0, 12).join("\n") + (tak.length > 12 ? "\n…" : "") +
-          "\n\nNama berkas harus persis nomor SKU, misalnya 1BOX-SLVR-(16-19).jpg." : "") +
+          "\n\nNama berkas harus persis nomor SKU, misalnya KAOS-HITAM-L.jpg." : "") +
         (salah.length ? `\n\n${salah.length} gagal diunggah:\n` + salah.slice(0, 6).join("\n") : ""), "Unggah foto massal");
     }
   } catch(e){ pesan(String(e.message || e), "Foto belum terunggah"); note(""); }
@@ -3497,9 +3908,10 @@ async function unduhTemplateKatalog(){
   const isi = (S.katalog || []).length
     ? S.katalog.map(r => [r.foto || "", r.kategori || "", r.sku || "", r.nama || "",
         kosongAngka(r.harga) ? "" : num(r.harga), kosongAngka(r.stok) ? "" : num(r.stok), r.tampil || ""])
-    : [["https://contoh.com/foto-cincin.jpg", "BEST SELLER", "1BOX-SLVR-(16-19)", "Cincin Silver Polos 1 Box", 56000, 12, "x"],
-       ["", "", "1BOX-CITA-LOVE-GOLD-(16-19)", "", 259000, 5, ""],
-       ["", "GOLD", "1BOX-CEKUMAL-GOLD-(16-19)", "", "", "", "x"]];
+    : [["https://contoh.com/foto-kaos-hitam.jpg", "TERLARIS", "KAOS-HITAM-L", "Kaos Polos Hitam Ukuran L", 45000, 24, "x"],
+       ["", "TERLARIS", "TAS-KANVAS-CREAM", "Tas Selempang Kanvas Cream", 89000, 8, "x"],
+       ["", "", "SERUM-VITC-30ML", "Serum Vitamin C 30 ml", 65000, 0, ""],
+       ["", "BARU", "MUG-KERAMIK-01", "Mug Keramik Motif Bunga", "", "", "x"]];
   const petunjuk = [
     ["CARA MENGISI TEMPLATE KATALOG"], [],
     ["Kolom", "Wajib?", "Keterangan"],
@@ -3536,7 +3948,7 @@ function bacaPengaturanLama(){
     "mode seleksi":"mode", "kategori disertakan":"katFilter", "urutkan berdasarkan":"urut",
     "kolom per baris":"kolom", "baris di halaman kategori":"baris1", "baris di halaman lanjutan":"baris2",
     "penyesuaian harga":"sesuaiPersen", "tampilkan stok":"tampilStok", "kualitas foto":"px",
-    "nama file output":"namaFile", "urutan kategori":"urutKat", "logo toko":"logo", "tinggi logo":"logoTinggi",
+    "nama file output":"namaFile", "urutan kategori":"urutKat", "logo toko":"logo",
     "label kanan kaki halaman":"labelKanan", "aturan kategori otomatis":"aturanKat", "kategori bawaan":"katBawaan",
   };
   const hasil = {};
@@ -3554,7 +3966,7 @@ function bacaPengaturanLama(){
       if (f === "mode") isi = /^x$/i.test(isi) ? "x" : /semua/i.test(isi) ? "semua" : "stok";
       else if (f === "urut") isi = /harga/i.test(isi) ? "harga" : "sku";
       else if (f === "tampilStok") isi = /^(ya|y|yes)$/i.test(String(isi));
-      else if (["kolom","baris1","baris2","sesuaiPersen","px","logoTinggi"].includes(f)) isi = num(isi);
+      else if (["kolom","baris1","baris2","sesuaiPersen","px"].includes(f)) isi = num(isi);
       hasil[f] = isi;
     }
   }
@@ -3619,7 +4031,7 @@ function viewKatalog(){
   </div>
   <div class="kpis">
     <div class="kpi hero"><div class="k">Masuk katalog</div><div class="v">${RE_ID.format(items.length)}</div>
-      <div class="m">${hal ? hal + " halaman A4 · tema " + (k.tema === "putih" ? "Putih" : "Noir") : "belum ada yang lolos"}</div></div>
+      <div class="m">${hal ? hal + " halaman A4 · " + esc(temaKatalog(k.tema).nama) : "belum ada yang lolos"}</div></div>
     <div class="kpi"><div class="k">Di daftar</div><div class="v">${RE_ID.format(semua.length)}</div>
       <div class="m">mode: ${k.mode === "x" ? "bertanda x" : k.mode === "semua" ? "semua SKU" : "stok di atas 0"}</div></div>
     <div class="kpi"><div class="k">Tidak lolos</div><div class="v">${RE_ID.format(semua.length - items.length)}</div>
@@ -3648,30 +4060,36 @@ function viewKatalog(){
   ${!semuaTampil ? `<div class="toolbar" style="margin-top:10px"><span class="status">Menampilkan ${LIM} dari ${baris.length} SKU.</span>
     <button class="btn ghost" id="kt-semua">Tampilkan semua</button></div>` : ""}`
   : `<div class="tablewrap"><div class="empty">Belum ada SKU di katalog.<br><br>
-      Tekan <strong>Impor data katalog</strong> dan pilih berkas Excel katalog lama Anda — sheet
-      <em>Database Katalog</em> dan <em>PENGATURAN</em>-nya langsung terbaca, tanpa perlu diubah.
-      Atau unduh template dulu kalau mulai dari nol.</div></div>`}`;
+      Tekan <strong>Unduh template</strong>, isi daftar produk Anda di Excel — nomor SKU, nama, harga,
+      stok, dan link foto kalau ada — lalu <strong>Impor data katalog</strong>.
+      Sudah punya katalog di Excel? Impor saja berkasnya langsung, kolomnya dikenali sendiri.</div></div>`}`;
 }
 
 /* ---------- halaman pengaturan katalog ---------- */
 function viewKatalogSet(){
   const k = KS();
+  const t = temaKatalog(k.tema);
   const { items } = katalogTerpilih(k);
   const { hal, kategori } = items.length ? hitungHalaman(items, k) : { hal:0, kategori:0 };
-  const teks = (key, label, ket, ph) => `<div class="field"><label>${esc(label)}</label>
-    <input type="text" data-ks="${key}" value="${esc(k[key] ?? "")}" placeholder="${esc(ph || "")}">
-    ${ket ? `<span style="font-size:11px;color:var(--ink3)">${esc(ket)}</span>` : ""}</div>`;
-  const angka = (key, label, ket, min, max, langkah) => `<div class="field"><label>${esc(label)}</label>
-    <input type="number" data-ks="${key}" value="${esc(k[key] ?? "")}" min="${min}" max="${max}" step="${langkah || 1}">
-    ${ket ? `<span style="font-size:11px;color:var(--ink3)">${esc(ket)}</span>` : ""}</div>`;
-  const pilih = (key, label, opsi, ket) => `<div class="field"><label>${esc(label)}</label>
-    <select data-ks="${key}">${opsi.map(([v, t]) => `<option value="${esc(v)}"${String(k[key]) === String(v) ? " selected" : ""}>${esc(t)}</option>`).join("")}</select>
-    ${ket ? `<span style="font-size:11px;color:var(--ink3)">${esc(ket)}</span>` : ""}</div>`;
-  const kartu = (judul, sub, isi) => `<div class="card" style="margin-bottom:16px"><div class="bd">
-    <div class="sh">${esc(judul)}</div>${sub ? `<div class="ss">${esc(sub)}</div>` : ""}
-    <div class="grid2" style="margin-top:12px">${isi}</div></div></div>`;
+  const ket = x => x ? `<span style="font-size:11px;color:var(--ink3)">${esc(x)}</span>` : "";
+  const teks = (key, label, x, ph) => `<div class="field"><label>${esc(label)}</label>
+    <input type="text" data-ks="${key}" value="${esc(k[key] ?? "")}" placeholder="${esc(ph || "")}">${ket(x)}</div>`;
+  const angka = (key, label, x, min, max, langkah, mati) => `<div class="field"><label>${esc(label)}</label>
+    <input type="number" data-ks="${key}" value="${esc(k[key] ?? "")}" min="${min}" max="${max}" step="${langkah || 1}"${mati ? " disabled" : ""}>${ket(x)}</div>`;
+  const pilih = (key, label, opsi, x) => `<div class="field"><label>${esc(label)}</label>
+    <select data-ks="${key}">${opsi.map(([v, tx]) => `<option value="${esc(v)}"${String(k[key]) === String(v) ? " selected" : ""}>${esc(tx)}</option>`).join("")}</select>${ket(x)}</div>`;
+  const kartu = (judul, isi) => `<div class="card" style="margin-bottom:16px"><div class="bd">
+    <div class="ktj">${esc(judul)}</div><div class="grid2" style="margin-top:12px">${isi}</div></div></div>`;
   const stokAppNol = k.sumberStok === "app" && (S.katalog || []).length
     ? (S.katalog || []).filter(r => { const s = stokApp(r.sku); return s != null && s <= 0; }).length : 0;
+  const u = ukuranLogo(k, 1);
+
+  const galeri = TEMA_KATALOG.map((tm, i) => `
+    <button type="button" class="ktgal${tm.id === t.id ? " on" : ""}" data-kttema="${tm.id}" aria-pressed="${tm.id === t.id}">
+      ${miniTema(tm)}
+      <span class="ktgn"><b>${i + 1}. ${esc(tm.nama)}</b>${tm.id === t.id ? `<em>dipakai</em>` : ""}</span>
+      <span class="ktgc">${esc(tm.cocok)}</span>
+    </button>`).join("");
 
   return `
   <div class="pagehead"><h1>Pengaturan Katalog</h1>${pandu(esc(PANDUAN.katalogSet))}</div>
@@ -3679,65 +4097,128 @@ function viewKatalogSet(){
     <button class="btn primary" id="kt-buat"${items.length ? "" : " disabled"}>Lihat hasil katalog</button>
     <button class="btn" data-nav="katalog">← Data katalog</button>
     <span class="spacer"></span>
-    <span class="status">${items.length ? `${items.length} SKU · ${kategori} kategori · ${hal} halaman A4` : "Belum ada SKU yang lolos saringan"}</span>
+    <span class="status">${items.length ? `${items.length} produk · ${kategori} kategori · ${hal} halaman A4` : "Belum ada produk yang lolos saringan"}</span>
   </div>
 
-  ${kartu("Tampilan", "Dua gaya dari katalog Excel Anda", `
-    ${pilih("tema", "Tema", [["noir","Noir — sampul gelap, aksen kuningan"],["putih","Putih — bingkai garis ganda, huruf Playfair"]])}
-    ${angka("kolom", "Kolom per baris", "3 = foto lebih besar · 4 = standar · 5 = padat", 2, 6)}
-    ${angka("baris1", "Baris di halaman kategori", "Halaman yang ada judul kategorinya", 1, 8)}
-    ${angka("baris2", "Baris di halaman lanjutan", "Halaman tanpa judul kategori", 1, 8)}
+  <div class="ktgrid">${galeri}</div>
+
+  ${kartu("Tata letak", `
+    ${angka("kolom", "Kolom per baris", t.aturSendiri ? "Template ini mengatur susunannya sendiri" : "3 = foto lebih besar · 4 = standar · 5 = padat", 2, 6, 1, t.aturSendiri)}
+    ${angka("baris1", "Baris di halaman kategori", t.aturSendiri ? "" : "Halaman yang ada judul kategorinya", 1, 8, 1, t.aturSendiri)}
+    ${angka("baris2", "Baris di halaman lanjutan", t.aturSendiri ? "" : "Halaman tanpa judul kategori", 1, 8, 1, t.aturSendiri)}
+    ${pilih("teksKartu", "Teks di kartu produk", [["keduanya","Nama produk + SKU"],["nama","Nama produk saja"],["sku","Nomor SKU saja"]],
+      "Kalau nama produk kosong, SKU yang dipakai")}
     ${pilih("tampilStok", "Tampilkan stok di kartu", [["false","Tidak"],["true","Ya"]])}
-    ${angka("px", "Kualitas foto (px)", "Untuk link BigSeller. 700 cukup tajam untuk cetak, 300 = ringan. 0 = link apa adanya", 0, 1500, 50)}
+    ${angka("px", "Ukuran foto dari link BigSeller (px)", "700 tajam untuk cetak · 300 ringan · 0 = link apa adanya", 0, 1500, 50)}
   `)}
 
-  ${kartu("Sampul & identitas", "", `
-    ${teks("brand", "Nama brand", "Judul besar di sampul", S.setup.nama)}
+  ${kartu("Sampul & identitas", `
+    ${teks("brand", "Nama toko / brand", "Judul besar di sampul", S.setup.nama)}
     ${teks("sub", "Sub judul", "Di sampul dan kaki halaman", "KATALOG PRODUK")}
-    ${teks("eyebrow", "Label kiri atas sampul", "", "GROSIR CINCIN")}
-    ${teks("edisi", "Edisi", "Ganti tiap kali memperbarui katalog", "EDISI SEPTEMBER 2026")}
-    <div class="field"><label>Logo</label>
-      <div style="display:flex;gap:8px;align-items:center">
-        ${k.logo ? `<img src="${esc(k.logo)}" alt="" referrerpolicy="no-referrer" style="height:38px;max-width:90px;object-fit:contain;border:1px solid var(--line);border-radius:6px;background:#fff;padding:3px">` : ""}
-        <input type="text" data-ks="logo" value="${esc(k.logo || "")}" placeholder="link gambar, atau unggah →" style="flex:1">
-        <button class="btn" id="kt-logo" type="button">Unggah</button></div></div>
-    ${angka("logoTinggi", "Tinggi logo (mm)", "Ukuran logo di sampul", 5, 60)}
-    ${teks("labelKanan", "Label kanan kaki halaman", "Mis. HARGA PER BOX. Kosongkan kalau tidak perlu", "HARGA PER BOX")}
+    ${teks("eyebrow", "Label kecil di atas sampul", "", "KOLEKSI TERBARU")}
+    ${teks("edisi", "Edisi", "Ganti tiap kali memperbarui katalog", "EDISI " + new Date().toLocaleDateString("id-ID", { month:"long", year:"numeric" }).toUpperCase())}
+    <div class="field" style="grid-column:span 2"><label>Logo</label>
+      <div class="ktlogo">
+        <div class="ktlogo-pv">${k.logo
+          ? `<img src="${esc(k.logo)}" alt="" referrerpolicy="no-referrer" style="width:${u.w * 2.2}px;height:${u.h * 2.2}px">`
+          : `<span>belum ada logo</span>`}</div>
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;gap:8px">
+            <button class="btn primary" id="kt-logo" type="button">Unggah PNG</button>
+            ${k.logo ? `<button class="btn ghost" id="kt-logo-hapus" type="button">Hapus logo</button>` : ""}
+          </div>
+          <input type="text" data-ks="logo" value="${esc(k.logo || "")}" placeholder="atau tempel link gambar (https://…)">
+          ${ket("PNG dengan latar transparan paling bagus. Pinggiran kosong dipotong otomatis, dan ukurannya diseimbangkan: logo lebar, persegi, maupun tinggi tampil sama besarnya — ukuran berkas asli tidak berpengaruh.")}
+        </div></div></div>
+    ${pilih("logoUkuran", "Ukuran logo", [["kecil","Kecil"],["sedang","Sedang"],["besar","Besar"]])}
+    ${teks("labelKanan", "Label di kaki halaman", "Mis. HARGA GROSIR atau HARGA SATUAN. Kosongkan kalau tidak perlu", "HARGA GROSIR")}
     ${teks("namaFile", "Nama berkas saat diunduh", "Tanpa .html", "Katalog")}
   `)}
 
-  ${kartu("Kontak & keterangan", "Kosongkan yang tidak ingin ditampilkan", `
+  ${kartu("Kontak & keterangan", `
     ${teks("wa", "WhatsApp", "", "08xx")}
     ${teks("ig", "Instagram", "", "@toko")}
     ${teks("tt", "TikTok", "", "@toko")}
     ${teks("fb", "Facebook", "", "")}
-    ${teks("catatan1", "Catatan 1", "", "Harga tertera adalah harga grosir per box.")}
-    ${teks("catatan2", "Catatan 2", "", "Stok berubah setiap hari, konfirmasi sebelum transfer.")}
+    ${teks("catatan1", "Catatan 1", "", "Harga dapat berubah sewaktu-waktu.")}
+    ${teks("catatan2", "Catatan 2", "", "Tanyakan ketersediaan stok sebelum transfer.")}
   `)}
 
-  ${kartu("SKU mana yang masuk", "Aturan pemilihan dan urutan", `
-    ${pilih("mode", "Mode seleksi", [["stok","Stok di atas 0"],["x","Hanya yang bertanda x"],["semua","Semua SKU"]])}
+  ${kartu("Produk mana yang masuk", `
+    ${pilih("mode", "Mode seleksi", [["stok","Stok di atas 0"],["x","Hanya yang bertanda x"],["semua","Semua produk"]])}
     ${pilih("urut", "Urutkan dalam kategori", [["sku","Nomor SKU (A–Z)"],["harga","Harga (murah ke mahal)"]])}
-    ${teks("katFilter", "Kategori yang disertakan", "Kosongkan = semua. Contoh: GOLD, SILVER", "semua kategori")}
-    ${teks("urutKat", "Urutan kategori", "Urutan bagian di katalog. Sisanya menyusul, kategori bawaan paling akhir", "BEST SELLER, GOLD, SILVER")}
-    ${teks("aturanKat", "Aturan kategori otomatis", "NAMA=pola1,pola2; dipisah titik koma. Dicek dari kiri, yang cocok duluan menang. Dipakai kalau kolom Kategori kosong", "GOLD=-GOLD; SILVER=-SILVER")}
-    ${teks("katBawaan", "Kategori bawaan", "Kalau tidak ada pola yang cocok", "MODEL LAINNYA")}
+    ${teks("katFilter", "Kategori yang disertakan", "Kosongkan = semua. Contoh: KAOS, KEMEJA", "semua kategori")}
+    ${teks("urutKat", "Urutan kategori", "Urutan bagian di katalog. Sisanya menyusul, kategori bawaan paling akhir", "TERLARIS, BARU, DISKON")}
+    ${teks("aturanKat", "Aturan kategori otomatis", "NAMA=pola1,pola2; dipisah titik koma. Dipakai kalau kolom Kategori kosong. Contoh: KAOS=KS-,TSHIRT; CELANA=CLN-", "boleh dikosongkan")}
+    ${teks("katBawaan", "Kategori bawaan", "Kalau tidak ada pola yang cocok", "LAINNYA")}
   `)}
 
-  ${kartu("Asal harga & stok", "Dari berkas yang Anda impor, atau dari pembukuan di aplikasi ini", `
+  ${kartu("Asal harga & stok", `
     ${pilih("sumberHarga", "Harga yang dicetak", [
       ["impor","Dari berkas impor katalog"],
       ["modal","Dari aplikasi: Harga Modal × markup"],
       ["jual","Dari aplikasi: Harga Jual Normal di Master Produk"]])}
-    ${angka("markup", "Markup (kali harga modal)", "1,4 = modal + 40%, sama dengan rumus lama =B2*1.4", 1, 10, 0.05)}
+    ${angka("markup", "Markup (kali harga modal)", "1,4 = harga modal + 40%", 1, 10, 0.05)}
     ${angka("sesuaiPersen", "Penyesuaian harga (%)", "10 = semua harga naik 10% khusus katalog ini", -90, 500, 1)}
     ${pilih("sumberStok", "Stok untuk seleksi", [["impor","Dari berkas impor katalog"],["app","Dari aplikasi: stok akhir hari ini"]])}
     ${pilih("cadangan", "Kalau kosong di sumber utama", [["true","Ambil dari sumber yang satunya"],["false","Biarkan kosong"]],
       "Mis. harga impor kosong → pakai Harga Modal × markup")}
   `)}
-  ${stokAppNol ? `<div class="warnbox"><strong>${stokAppNol} SKU stoknya nol atau minus menurut aplikasi.</strong>
+  ${stokAppNol ? `<div class="warnbox"><strong>${stokAppNol} produk stoknya nol atau minus menurut aplikasi.</strong>
     Stok akhir di aplikasi hanya benar kalau Stok Awal di Master Produk dan tabel Pembelian sudah diisi.
     Selama itu belum, pakai stok dari berkas impor supaya katalog tidak kosong.</div>` : ""}`;
+}
+
+/* ---------- logo: potong pinggiran kosong, simpan PNG, catat perbandingannya ---------- */
+async function siapkanLogo(file){
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((ok, gagal) => { const i = new Image(); i.onload = () => ok(i); i.onerror = gagal; i.src = url; });
+    const W = img.naturalWidth, H = img.naturalHeight;
+    const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+    const cx = cv.getContext("2d", { willReadFrequently:true }); cx.drawImage(img, 0, 0);
+    const d = cx.getImageData(0, 0, W, H).data;
+    /* Ada piksel tembus pandang? Potong yang tembus pandang. Tidak ada (JPG)?
+       Potong pinggiran yang nyaris putih. */
+    let transparan = false;
+    for (let i = 3; i < d.length; i += 4 * 97) if (d[i] < 250){ transparan = true; break; }
+    const kosong = i => transparan ? d[i + 3] < 10 : (d[i] > 245 && d[i + 1] > 245 && d[i + 2] > 245);
+    let x0 = W, y0 = H, x1 = -1, y1 = -1;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++){
+      if (kosong((y * W + x) * 4)) continue;
+      if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+    }
+    if (x1 < 0){ x0 = 0; y0 = 0; x1 = W - 1; y1 = H - 1; }
+    const w = x1 - x0 + 1, h = y1 - y0 + 1;
+    const skala = Math.min(1, 1200 / Math.max(w, h));
+    const out = document.createElement("canvas");
+    out.width = Math.max(1, Math.round(w * skala)); out.height = Math.max(1, Math.round(h * skala));
+    out.getContext("2d").drawImage(cv, x0, y0, w, h, 0, 0, out.width, out.height);
+    const blob = await new Promise(ok => out.toBlob(ok, "image/png"));
+    return { blob, rasio: w / h };
+  } finally { URL.revokeObjectURL(url); }
+}
+async function unggahLogoKatalog(file){
+  if (!SB || !AKUN) throw new Error("Masuk dulu untuk mengunggah logo.");
+  if (!/^image\//.test(file.type || "")) throw new Error(file.name + " bukan berkas gambar.");
+  const { blob, rasio } = await siapkanLogo(file);
+  const pemilik = AKUN.induk || AKUN.id;
+  const jalur = `${pemilik}/logo-${Date.now().toString(36)}.png`;
+  const { error } = await SB.storage.from(BUCKET_KATALOG).upload(jalur, blob,
+    { contentType:"image/png", upsert:false, cacheControl:"31536000" });
+  if (error) throw new Error(/bucket/i.test(error.message) && /not found/i.test(error.message)
+    ? "Tempat penyimpanan foto belum dibuat. Jalankan supabase-katalog.sql di SQL Editor Supabase sekali saja."
+    : (error.message || String(error)));
+  return { url: SB.storage.from(BUCKET_KATALOG).getPublicUrl(jalur).data.publicUrl, rasio };
+}
+/* Logo dari link: tidak bisa dipotong (gambarnya milik situs lain), tapi
+   perbandingan lebar-tingginya tetap bisa diukur supaya ukurannya seimbang. */
+function ukurRasioLogo(url){
+  if (!url) return;
+  const i = new Image();
+  i.referrerPolicy = "no-referrer";
+  i.onload = () => { if (i.naturalWidth && i.naturalHeight){ setKS("logoRasio", i.naturalWidth / i.naturalHeight); touch(); } };
+  i.src = url;
 }
 
 
@@ -6681,11 +7162,16 @@ document.addEventListener("click", async e => {
   if (t.id === "kt-template"){ await unduhTemplateKatalog(); return; }
   if (t.id === "kt-massal"){
     if (!SB){ pesan("Unggah foto hanya tersedia di versi web yang tersambung ke Supabase."); return; }
-    pesan("Pilih banyak foto sekaligus. Nama tiap berkas harus persis nomor SKU-nya, misalnya\n1BOX-SLVR-(16-19).jpg\n\nFoto dikecilkan otomatis sebelum diunggah, jadi foto langsung dari kamera HP pun tidak masalah.", "Unggah foto massal")
+    pesan("Pilih banyak foto sekaligus. Nama tiap berkas harus persis nomor SKU-nya, misalnya\nKAOS-HITAM-L.jpg\n\nFoto dikecilkan otomatis sebelum diunggah, jadi foto langsung dari kamera HP pun tidak masalah.", "Unggah foto massal")
       .then(() => pilihBerkasKatalog({ jenis:"massal" }, true));
     return;
   }
-  if (t.id === "kt-logo"){ pilihBerkasKatalog({ jenis:"logo" }, false); return; }
+  if (t.id === "kt-logo"){
+    if (!SB){ pesan("Unggah logo hanya tersedia di versi web yang tersambung ke Supabase. Tempel link gambarnya saja."); return; }
+    pilihBerkasKatalog({ jenis:"logo" }, false); return; }
+  if (t.id === "kt-logo-hapus"){ const lama = KS().logo; setKS("logo", ""); setKS("logoRasio", 1); hapusFotoLama(lama); touch(); return; }
+  const kttema = t.closest("[data-kttema]");
+  if (kttema){ setKS("tema", kttema.dataset.kttema); touch(); return; }
   if (t.id === "kt-mentah"){ mentahKatalog = true; render(); return; }
   if (t.id === "kt-rapi"){ mentahKatalog = false; render(); return; }
   if (t.id === "kt-semua"){ (S.ui ||= {}).ktSemua = true; render(); return; }
@@ -7028,7 +7514,9 @@ document.addEventListener("change", e => {
     let v = t.value;
     if (t.type === "number") v = v === "" ? KATALOG_BAWAAN[kunci] : Number(v);
     else if (v === "true" || v === "false") v = v === "true";
-    setKS(kunci, v); touch(); return;
+    setKS(kunci, v);
+    if (kunci === "logo") ukurRasioLogo(String(v || "").trim());
+    touch(); return;
   }
   if (t.id === "kt-saring"){ (S.ui ||= {}).ktSaring = t.value; S.ui.ktSemua = false; render(); return; }
   const c = t.dataset.cell;
