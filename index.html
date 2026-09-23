@@ -372,6 +372,16 @@ tbody tr.sub:hover td{background:var(--surface3)}
 /* Baris laporan yang punya penjelasan: garis bawah putus-putus yang halus —
    cukup untuk memberi tahu "ada yang bisa dilihat di sini", tidak cukup untuk
    mengganggu orang yang cuma ingin membaca angkanya. */
+/* katalog: foto kecil di tabel, dan lapisan pratinjau layar penuh */
+.ktfoto{width:52px;height:52px;border-radius:7px;overflow:hidden;background:var(--surface2);
+  border:1px solid var(--line);display:flex;align-items:center;justify-content:center;
+  font-size:9.5px;line-height:1.2;text-align:center;color:var(--ink3)}
+.ktfoto img{width:100%;height:100%;object-fit:cover}
+#ktpv{position:fixed;inset:0;z-index:150;background:#6f6f6f;display:flex;flex-direction:column}
+#ktpv[hidden]{display:none}
+#ktpv .ktpv-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 16px;
+  background:var(--surface);border-bottom:1px solid var(--line2);color:var(--ink)}
+#ktpv iframe{flex:1;width:100%;border:0;background:#7c7c7c}
 .jls{cursor:help; text-decoration:underline dotted var(--line2); text-underline-offset:3px}
 .jls:hover,.jls:focus{text-decoration-color:var(--accent); outline:none}
 #jbox{position:fixed; z-index:120; width:330px; max-width:calc(100vw - 24px);
@@ -468,6 +478,7 @@ dialog .db{max-height:min(70vh,620px); overflow-y:auto}
     <div class="navgroup"><span class="lbl">Ringkasan</span><div class="nav" id="nav-a"></div></div>
     <div class="navgroup"><span class="lbl">Data Masuk</span><div class="nav" id="nav-b"></div></div>
     <div class="navgroup"><span class="lbl">Laporan</span><div class="nav" id="nav-c"></div></div>
+    <div class="navgroup"><span class="lbl">Katalog</span><div class="nav" id="nav-e"></div></div>
     <div class="navgroup"><span class="lbl">Pengaturan</span><div class="nav" id="nav-d"></div></div>
   </aside>
   <div class="main">
@@ -575,7 +586,8 @@ const BLANK = () => ({
   /* ringkasan pesanan yang melintasi batas bulan, dibuat otomatis saat impor.
      Ini yang membuat cut-off tetap bisa dihitung walau datanya diringkas per hari. */
   akrual: [], akrualSku: [], aset: [], varian: [], resep: [], manual: [],
-  toko: []
+  toko: [],
+  katalog: [], katalogSet: {}
 });
 let S = BLANK();
 let db = null, saveTimer = null;
@@ -1504,6 +1516,8 @@ const konfirmasi = (teks, judul, ya) => kotak(judul || "Perlu konfirmasi", teks,
    yang tidak tersedia membuat pembukuan tersimpan di peramban perangkat ini saja,
    sampai basis data sungguhan dipasang. */
 const TIPE_BERKAS = n => /\.pdf$/i.test(n) ? "application/pdf"
+  : /\.xlsx$/i.test(n) ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+  : /\.html?$/i.test(n) ? "text/html;charset=utf-8"
   : /\.json$/i.test(n) ? "application/json;charset=utf-8"
   : /\.csv$/i.test(n) ? "text/csv;charset=utf-8" : "text/plain;charset=utf-8";
 const UNDUH_PERAMBAN = {
@@ -2166,6 +2180,18 @@ const TABLES = {
       { k:"nama",  h:"Catatan", t:"text" },
     ],
   },
+  katalog: {
+    label: "Data Katalog", singular: "SKU katalog",
+    cols: [
+      { k:"foto", h:"Link Foto", t:"text", w:240 },
+      { k:"kategori", h:"Kategori", t:"text", w:130 },
+      { k:"sku", h:"Nomor SKU", t:"text", w:220 },
+      { k:"nama", h:"Nama Produk", t:"text" },
+      { k:"harga", h:"Harga Katalog", t:"n", one:true },
+      { k:"stok", h:"Stok", t:"n", w:90, one:true },
+      { k:"tampil", h:"Tampilkan (x)", t:"text", w:100 },
+    ],
+  },
   produk: {
     label: "Master Produk", singular: "produk",
     cols: [
@@ -2185,6 +2211,8 @@ const PANDUAN = {
   order: "Menerima export pesanan dari ketiga platform dan mengenalinya sendiri. Kode barang Anda terbaca dari Nomor Referensi SKU (Shopee), Seller SKU (TikTok), dan sellerSku (Lazada) — kode yang sama di platform berbeda otomatis menyatu jadi satu barang. Di Lazada satu baris berarti satu unit. SUMBER TERBAIK: export Seller Centre → Pesanan → Semua Pesanan. File itu memuat Nomor Referensi SKU — kode Anda sendiri per variasi, misalnya CIBUT-SILVER-16 — sehingga harga modal dan kartu stok bisa persis per ukuran dan per warna, dan otomatis menyatu antar toko karena kodenya sama. File Income tidak bisa: di sana hanya ada ID Produk induk yang menggabung seluruh variasi jadi satu. Export Pesanan juga membawa Status Pesanan (pesanan batal otomatis tidak menimbulkan HPP) dan Returned quantity (jumlah unit retur yang sebenarnya, dipakai menggantikan taksiran). Alternatif lama: dari file Income yang sama (pilih baris bertipe Sku — satu baris = satu unit) atau dari export Pesanan. HPP dihitung dari Harga Modal per SKU di Master Produk, jadi isi kolom itu setelah mengimpor. Tanggal pengakuan HPP mengikuti tanggal pencairan pesanan yang bersangkutan, dicocokkan lewat No. Pesanan — jadi tanggal di tabel ini boleh tanggal pesanan dibuat maupun tanggal selesai, laporannya tetap sama. Pesanan yang belum punya pasangan penghasilan muncul di halaman Tutup Buku.",
   mutasi: "Menerima mutasi saldo ketiga platform. Shopee: Keuangan → Saldo Penjual → Transaksi Terakhir → Export. TikTok Shop: sheet Riwayat Penarikan di dalam file Keuangan → Transaksi (berisi Earnings harian dan Withdrawal ke bank). Lazada: Finance → Wallet → Transaction History; di sana tidak ada kolom saldo berjalan, jadi yang bisa dicocokkan adalah mutasinya, bukan saldo akhirnya. Ini rekening koran saldo penjual Anda: seluruh dana masuk dan keluar. Tabel ini TIDAK diposting ke jurnal — gunanya sebagai pembanding di halaman Rekonsiliasi Saldo, sekaligus sumber otomatis untuk Penarikan Dana.",
   adjust: "Penyesuaian yang dibayarkan marketplace di luar rincian per pesanan: kompensasi pesanan hilang, penggantian ongkir, dan pengembalian barang atau dana setelah dana dilepaskan. Jumlahnya TIDAK termasuk dalam total yang dilepas ke saldo Anda, dan inilah penyebab paling umum pembukuan tidak cocok dengan mutasi Saldo Penjual. TIDAK PERLU DIIMPOR SENDIRI. Begitu Anda mengimpor Penghasilan Marketplace, penyesuaian di berkas yang sama ikut terpanen otomatis \u2014 dari sheet Adjustment untuk Shopee, dari baris yang Jenis transaksi-nya bukan Pesanan untuk TikTok, sedangkan Lazada memang tidak punya baris terpisah karena Reversal Item Price dan Reversal Commission sudah ikut terhitung saat laporannya diringkas. Berkas yang sama boleh diimpor berulang kali; baris yang sudah pernah masuk dikenali dan dilewati, jadi tidak pernah terhitung dua kali. Impor manual lewat tombol di halaman ini tetap tersedia untuk berkas yang bentuknya tidak dikenali. Kolom Diperlakukan Sebagai menentukan akun tujuannya dan ditebak dari kalimat keterangannya \u2014 kompensasi masuk Pendapatan Lain-lain, pengembalian barang mengurangi Penjualan, koreksi biaya masuk akun bebannya sendiri. Tebakan itu sengaja bisa Anda ubah: periksa sekilas setiap kali ada baris baru.",
+  katalog: "Daftar SKU yang bisa masuk katalog grosir Anda, lengkap dengan foto, harga, dan stok. Tekan Impor data katalog lalu pilih berkas Excel katalog lama — sheet Database Katalog dan PENGATURAN-nya terbaca langsung. Mengimpor ulang dengan nomor SKU yang sama akan memperbarui baris itu, bukan membuat baris kembar. Foto boleh berupa link (BigSeller dan sejenisnya) atau diunggah dari perangkat; untuk ratusan foto sekaligus, pakai Unggah foto massal dengan nama berkas persis nomor SKU-nya. Kolom Di katalog memperlihatkan harga dan stok yang benar-benar tercetak — label app berarti angkanya diambil dari pembukuan, bukan dari berkas impor. Setelah itu tekan Buat katalog, periksa pratinjaunya, lalu Cetak / Simpan PDF.",
+  katalogSet: "Seluruh isi sheet PENGATURAN di katalog Excel lama Anda ada di sini, ditambah satu hal baru: asal harga dan stok. Harga boleh dari berkas impor, dari Harga Modal dikali markup, atau dari Harga Jual Normal di Master Produk. Stok boleh dari berkas impor atau dari stok akhir pembukuan. Setiap perubahan langsung tersimpan, dan angka di kanan atas memberi tahu berapa SKU dan halaman yang akan keluar.",
   iklan: "Halaman ini HANYA untuk iklan yang Anda bayar sendiri DI LUAR penghasilan marketplace — misalnya isi saldo iklan lewat transfer bank atau kartu kredit. Kalau saldo iklan Anda terisi otomatis dari penghasilan, biayanya sudah masuk lewat kolom biaya iklan di Penghasilan Marketplace, jadi jangan diinput lagi di sini. Shopee dan TikTok memotong biaya iklannya langsung dari penghasilan (Shopee: Isi Saldo Otomatis, TikTok: Biaya Iklan GMV Max), jadi keduanya sudah otomatis. Lazada Sponsored Solutions umumnya ditagih terpisah di luar laporan penghasilan — itulah yang perlu Anda catat di sini, kalau tidak biaya iklan Lazada tidak akan pernah masuk pembukuan dan laba Lazada Anda kelihatan terlalu bagus. Sumber datanya: Seller Centre masing-masing platform, bagian Iklan atau Sponsored Solutions.",
   saldo: "Seller Centre → Keuangan → Saldo Penjual → Riwayat Penarikan. Ini yang memindahkan uang dari Saldo Shopee ke rekening bank Anda.",
   beli: "Dari nota atau faktur supplier, bukan dari marketplace. Satu faktur boleh memuat banyak SKU: isi kepalanya sekali (tanggal, nomor faktur, supplier, cara bayar) lalu tambahkan barisnya satu per satu. Ongkos masuk cukup diisi sekali di tingkat faktur, nanti dibagi ke tiap baris menurut nilai barangnya. Panel Usulan Harga Modal di atas memperlihatkan berapa harga modal seharusnya menurut pembelian ini dan berapa dampaknya ke laba — tetapi HPP Anda tetap memakai Harga Modal lama sampai Anda menekan Terapkan.",
@@ -2221,6 +2249,8 @@ const NAV = [
   ["c","cutoff","Tutup Buku (Cut-off)"],
   ["c","fiskal","Rekonsiliasi Fiskal"],
   ["c","neracasaldo","Neraca Saldo"],
+  ["e","katalog","Katalog Produk"],
+  ["e","katalogSet","Pengaturan Katalog"],
   ["d","produk","Master Produk"],
   ["d","resep","Resep SKU Kombinasi"],
   ["d","varian","Variasi Produk"],
@@ -2238,13 +2268,13 @@ const NAV_HAK = {
   akun:"pengaturan", setup:"pengaturan", pengguna:"pengguna", paket:"pengguna",
   income:"input", order:"input", adjust:"input", mutasi:"input", iklan:"input", manual:"input",
   saldo:"input", beli:"input", ops:"input", aset:"input", pajak:"input", jurnal:"input",
-  produk:"input", resep:"input", varian:"input",
+  produk:"input", resep:"input", varian:"input", katalog:"input", katalogSet:"input",
 };
 const bolehHalaman = id => !NAV_HAK[id] || boleh(NAV_HAK[id]);
 const halamanPertama = () => boleh("laporan") ? "ringkasan" : boleh("input") ? "income" : "labarugi";
 
 function renderNav(){
-  for (const g of ["a","b","c","d"]){
+  for (const g of ["a","b","c","e","d"]){
     document.getElementById("nav-"+g).innerHTML = NAV.filter(n => n[0]===g && bolehHalaman(n[1])).map(([,id,label]) => {
       const c = TABLES[id] ? `<span class="cnt">${S[id].length}</span>` : "";
       return `<button data-nav="${id}" aria-current="${page===id}">${esc(label)}${c}</button>`;
@@ -2282,6 +2312,7 @@ function render(){
     : (page === "aset") ? viewAset()
     : (page === "beli") ? viewBeli()
     : (page === "manual" && !mentahManual) ? viewManual()
+    : (page === "katalog" && !mentahKatalog) ? viewKatalog()
     : (page === "resep" && !mentahResep) ? viewResep()
     : TABLES[page] ? viewTable(page) : ({
     ringkasan: () => viewRingkasan(R), labarugi: () => viewLabaRugi(),
@@ -2289,6 +2320,7 @@ function render(){
     neracasaldo: () => viewNeracaSaldo(R), rekon: () => viewRekon(R), cutoff: () => viewCutoff(R),
     fiskal: () => viewFiskal(),
     akun: () => viewAkun(R), setup: () => viewSetup(), paket: () => viewPaket(), pengguna: () => viewPengguna(),
+    katalogSet: () => viewKatalogSet(),
   }[page])();
   if (page === "ringkasan") drawCharts(R);
 }
@@ -2481,6 +2513,7 @@ function viewTable(key){
   <div class="toolbar">
     <button class="btn primary" data-add="${key}">+ Baris baru</button>
     ${key === "order" ? `<button class="btn ghost" id="sku-mentah">← Kembali ke tampilan per SKU</button>` : ""}
+    ${key === "katalog" ? `<button class="btn ghost" id="kt-rapi">← Kembali ke tampilan katalog</button>` : ""}
     <button class="btn" data-import="${key}">Impor file platform</button>
     ${key === "mutasi" && rows.length ? `<button class="btn primary" id="tarik-otomatis">Buat Penarikan Dana otomatis</button>` : ""}
     ${rows.length ? `<button class="btn" data-xls="${key}">Unduh CSV</button>` : ""}
@@ -2949,6 +2982,762 @@ function bukaGabung(){
     setTimeout(() => pesan(n ? n + " ID Produk disamakan kode barangnya." : "Tidak ada yang berubah."), 60);
   };
   dlg.showModal();
+}
+
+
+/* ============================ katalog produk ============================
+   Pindahan dari makro Excel "TEMPLATE KATALOG CINCIN GROSIR": pengaturannya,
+   aturan pemilihan SKU, urutan kategori, tata letak halaman, dan kedua temanya
+   (Noir dan Putih) dibawa apa adanya, supaya katalog yang keluar dari aplikasi
+   persis seperti yang sudah Anda kenal — hanya saja tidak perlu lagi membuka
+   Excel, menjalankan makro, lalu mencari file HTML-nya.
+
+   Datanya berdiri sendiri (tabel katalog), karena SKU katalog grosir seperti
+   1BOX-...-(16-19) bukan SKU marketplace. Harga dan stok boleh diambil dari file
+   impor atau dari data aplikasi — dipilih di halaman Pengaturan Katalog. */
+const BUCKET_KATALOG = "katalog";
+const KATALOG_BAWAAN = {
+  tema:"noir",
+  brand:"", sub:"KATALOG PRODUK", eyebrow:"", edisi:"",
+  wa:"", ig:"", tt:"", fb:"", catatan1:"", catatan2:"", labelKanan:"",
+  logo:"", logoTinggi:22,
+  mode:"stok", katFilter:"", urut:"sku", urutKat:"",
+  aturanKat:"GOLD=-GOLD; SILVER=-SILVER,-SLVR; ROSE GOLD=-RG-,ROSE; HITAM=-HITAM,BLACK",
+  katBawaan:"MODEL LAINNYA",
+  kolom:4, baris1:3, baris2:4, tampilStok:false, px:400, namaFile:"Katalog",
+  sumberHarga:"impor", markup:1.4, sesuaiPersen:0, sumberStok:"impor", cadangan:true,
+};
+const KS = () => {
+  const k = Object.assign({}, KATALOG_BAWAAN, S.katalogSet || {});
+  if (!String(k.brand || "").trim()) k.brand = S.setup.nama || "NAMA TOKO";
+  return k;
+};
+const setKS = (kunci, nilai) => { (S.katalogSet ||= {})[kunci] = nilai; };
+const rapat = s => String(s ?? "").toUpperCase().replace(/\s+/g, " ").split(",").map(x => x.trim()).filter(Boolean);
+const rupiahKatalog = v => "Rp " + RE_ID.format(Math.max(0, Math.round(num(v))));
+const kosongAngka = v => v === "" || v === null || v === undefined || (typeof v === "string" && !v.trim());
+
+/* ---------- harga & stok dari data aplikasi ---------- */
+const petaJualApp = simpan1("jualApp", () =>
+  new Map(S.produk.map(p => [normKode(p.sku), num(p.jual)])));
+/* Stok per kode barang HARI INI: stok awal + pembelian − barang keluar (lewat resep)
+   + retur yang kembali. Sama dengan cara halaman Produk & Pesanan menghitung stok
+   akhir, hanya tanpa batas periode dan tanpa saringan toko. */
+const petaStokApp = simpan1("stokApp", () => {
+  const VAR = petaVarian(), RES = petaResep();
+  const M = new Map();
+  const tambah = (k, q) => { k = normKode(k); if (!k) return; M.set(k, (M.get(k) || 0) + q); };
+  for (const p of S.produk) tambah(kodeBarang(p.sku), num(p.stokAwal));
+  for (const x of S.beli) tambah(kodeBarang(x.sku), num(x.qty));
+  for (const x of S.order){
+    if (pesananBatal(x)) continue;
+    for (const u of uraiUnit(x, VAR, RES)) tambah(u.kode, -num(u.qty));
+  }
+  for (const x of (S.manual || [])) for (const u of uraiUnit(x, VAR, RES)) tambah(u.kode, -num(u.qty));
+  const RQ = returQtySku("9999-99");
+  for (const [k, v] of Object.entries(RQ || {})) tambah(k, num(v));
+  return M;
+});
+/* null = aplikasi tidak mengenal SKU ini, bukan "stoknya nol". */
+function stokApp(sku){
+  const M = petaStokApp(), RES = petaResep();
+  const kode = kodeBarang(sku);
+  const res = resepDari(kode, RES) || resepDari(sku, RES);
+  if (res){
+    /* SKU paket tidak punya stok sendiri: yang tersedia sebanyak paket yang bisa
+       dirakit dari komponen yang paling sedikit. */
+    let min = Infinity;
+    for (const c of res){
+      const k = normKode(c.kode);
+      const s = M.has(k) ? M.get(k) : M.get(normKode(kodeBarang(c.kode)));
+      if (s === undefined) return null;
+      min = Math.min(min, Math.floor(s / Math.max(1, num(c.qty))));
+    }
+    return min === Infinity ? null : min;
+  }
+  const k = normKode(kode);
+  return M.has(k) ? M.get(k) : null;
+}
+function hargaApp(sku, k){
+  if (k.sumberHarga === "jual"){
+    const j = petaJualApp().get(normKode(sku)) || petaJualApp().get(normKode(kodeBarang(sku)));
+    return j ? j : null;
+  }
+  const m = modalBaris({ sku });
+  return m ? m * num(k.markup || 1) : null;
+}
+/* Harga & stok yang BENAR-BENAR dipakai di katalog, beserta asalnya — supaya
+   halaman data bisa memperlihatkan dari mana tiap angka datang. */
+function nilaiKatalog(r, k){
+  k = k || KS();
+  let harga = null, asalHarga = "";
+  if (k.sumberHarga === "impor"){
+    if (!kosongAngka(r.harga)){ harga = num(r.harga); asalHarga = "impor"; }
+    else if (k.cadangan){ const h = hargaApp(r.sku, Object.assign({}, k, { sumberHarga:"modal" })); if (h){ harga = h; asalHarga = "app"; } }
+  } else {
+    const h = hargaApp(r.sku, k);
+    if (h){ harga = h; asalHarga = "app"; }
+    else if (!kosongAngka(r.harga)){ harga = num(r.harga); asalHarga = "impor"; }
+  }
+  if (harga != null && num(k.sesuaiPersen)) harga = harga * (1 + num(k.sesuaiPersen) / 100);
+  if (harga != null) harga = Math.round(harga);
+
+  let stok = null, asalStok = "";
+  if (k.sumberStok === "impor"){
+    if (!kosongAngka(r.stok)){ stok = num(r.stok); asalStok = "impor"; }
+    else if (k.cadangan){ const s = stokApp(r.sku); if (s != null){ stok = s; asalStok = "app"; } }
+  } else {
+    const s = stokApp(r.sku);
+    if (s != null){ stok = s; asalStok = "app"; }
+    else if (!kosongAngka(r.stok)){ stok = num(r.stok); asalStok = "impor"; }
+  }
+  return { harga, asalHarga, stok, asalStok };
+}
+
+/* ---------- kategori ---------- */
+function aturanKategori(teks){
+  return String(teks || "").split(";").map(b => {
+    const [nama, pola] = b.split("=");
+    return { nama: String(nama || "").trim().toUpperCase(),
+             pola: String(pola || "").split(",").map(p => p.trim().toUpperCase()).filter(Boolean) };
+  }).filter(a => a.nama && a.pola.length);
+}
+function kategoriKatalog(r, k, A){
+  const manual = String(r.kategori || "").trim().toUpperCase();
+  if (manual) return manual;
+  const u = String(r.sku || "").toUpperCase();
+  for (const a of A) if (a.pola.some(p => u.includes(p))) return a.nama;
+  return String(k.katBawaan || "LAINNYA").trim().toUpperCase() || "LAINNYA";
+}
+const tandaTampil = v => /^(x|ya|y|yes|1|v|true|✓)$/i.test(String(v ?? "").trim());
+
+/* ---------- pemilihan SKU (sama persis dengan makro) ---------- */
+function katalogTerpilih(k){
+  k = k || KS();
+  const A = aturanKategori(k.aturanKat);
+  const saringKat = rapat(k.katFilter);
+  const urutKat = rapat(k.urutKat);
+  const bawaan = String(k.katBawaan || "").trim().toUpperCase();
+  const peringkat = kat => { const i = urutKat.indexOf(kat); return i >= 0 ? 10 + i : (kat === bawaan ? 900 : 500); };
+  const px = num(k.px);
+  const alasan = { stok:0, tanda:0, harga:0, kategori:0 };
+  const items = [];
+  for (const r of (S.katalog || [])){
+    const sku = String(r.sku || "").trim();
+    if (!sku) continue;
+    const v = nilaiKatalog(r, k);
+    if (k.mode === "x"){ if (!tandaTampil(r.tampil)){ alasan.tanda++; continue; } }
+    else if (k.mode !== "semua"){ if (!(num(v.stok) > 0)){ alasan.stok++; continue; } }
+    if (v.harga == null || v.harga < 0){ alasan.harga++; continue; }
+    const kat = kategoriKatalog(r, k, A);
+    if (saringKat.length && !saringKat.includes(kat)){ alasan.kategori++; continue; }
+    let foto = String(r.foto || "").trim();
+    if (foto && px >= 200) foto = foto.replace("/w/300/h/300", `/w/${px}/h/${px}`);
+    items.push({ foto, sku, nama: String(r.nama || "").trim(), kat, harga: v.harga, stok: v.stok,
+      kunci: String(peringkat(kat)).padStart(3, "0") + "|" + kat + "|" +
+        (k.urut === "harga" ? String(Math.floor(v.harga)).padStart(12, "0") + "|" + sku : sku) });
+  }
+  items.sort((a, b) => a.kunci < b.kunci ? -1 : a.kunci > b.kunci ? 1 : 0);
+  return { items, alasan };
+}
+/* Jumlah halaman: sampul + tiap kategori (halaman pertama memuat lebih sedikit
+   karena ada pita judulnya) + penutup. */
+function hitungHalaman(items, k){
+  const per1 = Math.max(1, num(k.kolom)) * Math.max(1, num(k.baris1));
+  const per2 = Math.max(1, num(k.kolom)) * Math.max(1, num(k.baris2));
+  const jml = new Map();
+  for (const it of items) jml.set(it.kat, (jml.get(it.kat) || 0) + 1);
+  let hal = 2;
+  for (const n of jml.values()) hal += 1 + Math.ceil(Math.max(0, n - per1) / per2);
+  return { hal, kategori: jml.size };
+}
+
+/* ---------- gaya kedua tema, disalin dari makro ---------- */
+function gayaKatalog(tema, nCols){
+  const cetak = "@media print{@page{size:A4;margin:0}body{background:none}" +
+    ".page{margin:0;box-shadow:none;break-after:page;page-break-after:always}" +
+    ".page:last-child{break-after:auto;page-break-after:auto}}";
+  if (tema === "putih") return "@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&family=Lato:wght@300;400;700&display=swap');" +
+    "*{margin:0;padding:0;box-sizing:border-box}" +
+    ":root{--bg:#F6F3EB;--card:#FBF9F3;--ink:#17150F;--soft:#6E6A5E;--hair:#D6CFBC;--hair2:#E4DECE;--line:#17150F;" +
+    "--serif:'Playfair Display',Georgia,'Times New Roman',serif;--sans:'Lato','Segoe UI',Helvetica,Arial,sans-serif;}" +
+    "body{background:#8b8b8b;font-family:var(--sans);color:var(--ink);-webkit-print-color-adjust:exact;print-color-adjust:exact}" +
+    ".page{width:210mm;height:296.6mm;background:var(--bg);position:relative;padding:15mm 16mm 12mm;" +
+    "margin:8mm auto;box-shadow:0 2mm 8mm rgba(0,0,0,.35);display:flex;flex-direction:column;overflow:hidden}" +
+    ".body{flex:1;min-height:0;position:relative;z-index:2}" +
+    ".deco{position:absolute;top:8mm;right:8mm;bottom:8mm;left:8mm;border:.25mm solid var(--hair);pointer-events:none;z-index:0}" +
+    ".deco::before{content:'';position:absolute;top:1.3mm;right:1.3mm;bottom:1.3mm;left:1.3mm;border:.25mm solid var(--hair2)}" +
+    ".mark{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:var(--serif);font-size:150mm;line-height:1;color:var(--ink);opacity:.028;z-index:0;pointer-events:none}" +
+    ".foot{position:relative;z-index:2;border-top:.35mm solid var(--hair);padding-top:2.5mm;display:flex;justify-content:space-between;align-items:baseline;font-size:6.6pt;letter-spacing:.18em;color:var(--soft)}" +
+    ".foot .pg{font-family:var(--serif);letter-spacing:.1em;font-size:8pt}" +
+    ".kat{display:flex;align-items:baseline;justify-content:space-between;border-bottom:1.1mm double var(--line);padding-bottom:2mm;margin-bottom:6mm}" +
+    ".kat h2{font-family:var(--serif);font-weight:500;font-size:26pt;letter-spacing:.06em}" +
+    ".kat span{font-size:7pt;letter-spacing:.22em;color:var(--soft)}" +
+    ".dia{font-size:5.4pt;vertical-align:middle;margin:0 2mm}" +
+    ".grid{display:grid;grid-template-columns:repeat(" + nCols + ",1fr);gap:6mm 5mm}" +
+    ".card{break-inside:avoid;page-break-inside:avoid}" +
+    ".ph{aspect-ratio:1/1;background:var(--card);border:.3mm solid var(--hair);padding:1.1mm;display:flex;align-items:center;justify-content:center;overflow:hidden}" +
+    ".ph img{width:100%;height:100%;object-fit:cover}" +
+    ".noimg{font-size:7pt;letter-spacing:.12em;color:var(--soft)}" +
+    ".sku{margin-top:2.2mm;height:6.4mm;overflow:hidden;font-size:6.4pt;letter-spacing:.11em;color:var(--soft);word-break:break-word;line-height:1.35}" +
+    ".prc{margin-top:1.2mm;font-family:var(--serif);font-weight:500;font-size:12.5pt}" +
+    ".stk{margin-top:.8mm;font-size:6.2pt;letter-spacing:.14em;color:var(--soft)}" +
+    ".cover{padding:14mm 16mm}" +
+    ".cover .deco{top:6mm;right:6mm;bottom:6mm;left:6mm;border-color:var(--line);border-width:.4mm}" +
+    ".cover .deco::before{border-color:var(--hair)}" +
+    ".cov-in{position:relative;z-index:2;flex:1;display:flex;flex-direction:column;justify-content:space-between}" +
+    ".cov-top{display:flex;justify-content:space-between;font-size:7.4pt;letter-spacing:.28em;color:var(--soft);padding-bottom:6mm;border-bottom:.25mm solid var(--hair)}" +
+    ".cov-mid{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center}" +
+    ".logo{margin-bottom:5mm;flex:0 0 auto;overflow:hidden}" +
+    ".cov-mid h1{font-family:var(--serif);font-weight:400;font-size:54pt;letter-spacing:.16em;line-height:1}" +
+    ".cov-rule{width:52mm;border-top:1.1mm double var(--line);margin:7mm 0 6mm}" +
+    ".cov-sub{font-size:9.5pt;letter-spacing:.36em;color:var(--soft)}" +
+    ".cov-bot{display:grid;grid-template-columns:1fr 1fr;gap:10mm;padding-top:8mm;border-top:.25mm solid var(--hair)}" +
+    ".lbl{font-size:7pt;letter-spacing:.26em;color:var(--soft);margin-bottom:2.5mm}" +
+    ".txt{font-size:9pt;line-height:1.7}" +
+    ".end{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}" +
+    ".end-rule{width:38mm;border-top:1.1mm double var(--line);margin-bottom:9mm}" +
+    ".end-thanks{font-family:var(--serif);font-style:italic;font-size:17pt}" +
+    ".end-contact{margin-top:8mm;font-size:9pt;color:var(--soft)}" +
+    ".end-meta{margin-top:6mm;font-size:7pt;letter-spacing:.24em;color:var(--soft)}" + cetak;
+
+  return "@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300&family=Jost:wght@200;300;400;500&display=swap');" +
+    "*{margin:0;padding:0;box-sizing:border-box}" +
+    ":root{--bg:#FCFBF8;--ink:#1C1B18;--dark:#1C1B18;--onDark:#F1ECE1;--brass:#A9884A;--soft:#8A8478;--tile:#F0ECE2;--hair:#E3DDCF;--skuInk:#4E4938;" +
+    "--serif:'Cormorant Garamond',Georgia,'Times New Roman',serif;--sans:'Jost','Segoe UI',Helvetica,Arial,sans-serif;}" +
+    "body{background:#7c7c7c;font-family:var(--sans);color:var(--ink);font-weight:300;-webkit-print-color-adjust:exact;print-color-adjust:exact}" +
+    ".page{width:210mm;height:296.6mm;background:var(--bg);position:relative;padding:14mm 16mm 16mm;" +
+    "margin:8mm auto;box-shadow:0 2mm 8mm rgba(0,0,0,.35);display:flex;flex-direction:column;overflow:hidden}" +
+    ".body{flex:1;min-height:0}" +
+    ".run{display:flex;justify-content:space-between;align-items:baseline;border-bottom:.3mm solid var(--brass);padding-bottom:2.2mm;margin-bottom:7mm;font-size:7pt;letter-spacing:.34em;text-transform:uppercase;color:var(--soft)}" +
+    ".run .pg{font-family:var(--serif);font-size:11pt;letter-spacing:.08em;color:var(--brass)}" +
+    ".run .dia{color:var(--brass);font-size:5pt;margin-right:2.5mm;vertical-align:middle}" +
+    ".strip{position:absolute;left:0;right:0;bottom:0;height:10mm;background:var(--dark);color:var(--onDark);display:flex;align-items:center;justify-content:space-between;padding:0 16mm;font-size:6pt;letter-spacing:.28em;text-transform:uppercase}" +
+    ".strip .b{color:var(--brass)}" +
+    ".band{background:var(--dark);color:var(--onDark);padding:5.5mm 7mm;margin-bottom:7mm;border-bottom:.7mm solid var(--brass);display:flex;align-items:baseline;justify-content:space-between}" +
+    ".band h2{font-family:var(--serif);font-weight:300;font-size:24pt;letter-spacing:.14em;text-transform:uppercase;line-height:1}" +
+    ".band span{font-size:6.8pt;letter-spacing:.3em;color:var(--brass)}" +
+    ".grid{display:grid;grid-template-columns:repeat(" + nCols + ",1fr);gap:7mm 6mm}" +
+    ".card{break-inside:avoid;page-break-inside:avoid;background:var(--tile);padding:3mm 3mm 3.4mm;border-bottom:.6mm solid var(--brass)}" +
+    ".ph{aspect-ratio:1/1;background:#FFFDF9;border:.25mm solid var(--hair);display:flex;align-items:center;justify-content:center;overflow:hidden}" +
+    ".ph img{width:100%;height:100%;object-fit:cover}" +
+    ".noimg{font-size:7pt;letter-spacing:.14em;color:var(--soft)}" +
+    ".prc{margin-top:2.6mm;font-family:var(--serif);font-weight:500;font-size:14pt;letter-spacing:.02em}" +
+    ".sku{margin-top:1.4mm;height:6.4mm;overflow:hidden;font-size:6.5pt;font-weight:400;letter-spacing:.07em;text-transform:uppercase;color:var(--skuInk);word-break:break-word;line-height:1.35}" +
+    ".stk{margin-top:.6mm;font-size:6.2pt;letter-spacing:.16em;color:var(--brass)}" +
+    ".cover{background:var(--dark);color:var(--onDark);padding:0}" +
+    ".cov-in{flex:1;display:flex;flex-direction:column;justify-content:space-between;margin:9mm;padding:11mm 13mm;border:.3mm solid rgba(169,136,74,.55)}" +
+    ".cov-top{display:flex;justify-content:space-between;font-size:7pt;letter-spacing:.34em;text-transform:uppercase;color:var(--brass)}" +
+    ".cov-mid{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center}" +
+    ".logo{margin-bottom:6mm;flex:0 0 auto;overflow:hidden}" +
+    ".cov-mid h1{font-family:var(--serif);font-weight:300;font-size:50pt;letter-spacing:.34em;line-height:1;text-indent:.34em;text-transform:uppercase}" +
+    ".cov-rule{width:34mm;height:.3mm;background:var(--brass);margin:9mm 0 7mm}" +
+    ".cov-sub{font-size:8pt;letter-spacing:.44em;text-transform:uppercase;color:var(--brass)}" +
+    ".cov-bot{display:grid;grid-template-columns:1fr 1fr;gap:12mm}" +
+    ".lbl{font-family:var(--serif);font-style:italic;font-size:10pt;color:var(--brass);margin-bottom:2.5mm}" +
+    ".txt{font-size:8.5pt;line-height:1.8;color:rgba(241,236,225,.82)}" +
+    ".end .cov-in{justify-content:center}" +
+    ".end-mid{display:flex;flex-direction:column;align-items:center;text-align:center}" +
+    ".end-thanks{font-family:var(--serif);font-style:italic;font-size:19pt;font-weight:300}" +
+    ".end-contact{font-size:8.5pt;letter-spacing:.05em;color:rgba(241,236,225,.82)}" +
+    ".end-meta{margin-top:7mm;font-size:6.6pt;letter-spacing:.3em;text-transform:uppercase;color:var(--brass)}" + cetak;
+}
+
+/* ---------- merangkai HTML katalog ---------- */
+function bangunKatalogHTML(items, k){
+  const nCols = Math.min(6, Math.max(2, Math.round(num(k.kolom) || 4)));
+  const nRow1 = Math.max(1, Math.round(num(k.baris1) || 3));
+  const nRow2 = Math.max(1, Math.round(num(k.baris2) || 4));
+  const putih = k.tema === "putih";
+  const E = esc;
+  const kontak = [["WhatsApp ", k.wa], ["Instagram ", k.ig], ["TikTok ", k.tt], ["Facebook ", k.fb]]
+    .filter(([, v]) => String(v || "").trim()).map(([l, v]) => l + E(String(v).trim())).join(" &middot; ");
+  const logoH = Math.min(60, Math.max(5, num(k.logoTinggi) || 22));
+  const logoHTML = String(k.logo || "").trim()
+    ? `<div class='logo' style="height:${logoH}mm;width:100%;background:url('${E(String(k.logo).trim())}') center center / contain no-repeat"></div>` : "";
+  const inisial = (String(k.brand || "").trim() + "S").charAt(0).toUpperCase();
+  const pakaiStok = !!k.tampilStok;
+  const kartu = it => {
+    const foto = it.foto
+      ? `<img src='${E(it.foto)}' alt='' referrerpolicy='no-referrer'>`
+      : "<div class='noimg'>Tanpa Foto</div>";
+    const ket = pakaiStok ? `<p class='stk'>Stok ${RE_ID.format(Math.max(0, Math.round(num(it.stok))))}</p>` : "";
+    return putih
+      ? `<article class='card'><div class='ph'>${foto}</div><p class='sku'>${E(it.sku)}</p><p class='prc'>${rupiahKatalog(it.harga)}</p>${ket}</article>`
+      : `<article class='card'><div class='ph'>${foto}</div><p class='prc'>${rupiahKatalog(it.harga)}</p><p class='sku'>${E(it.sku)}</p>${ket}</article>`;
+  };
+  const h = [];
+  h.push("<!DOCTYPE html><html lang='id'><head><meta charset='utf-8'>");
+  h.push(`<title>${E(k.brand)} &mdash; ${E(k.sub)}</title>`);
+  h.push(`<style>${gayaKatalog(putih ? "putih" : "noir", nCols)}</style></head><body>`);
+  /* sampul */
+  if (putih){
+    h.push(`<section class='page cover'><div class='deco'></div><div class='mark'>${E(inisial)}</div><div class='cov-in'>`);
+    h.push(`<div class='cov-top'><span>${E(k.eyebrow)}</span><span>${E(k.edisi)}</span></div>`);
+    h.push(`<div class='cov-mid'>${logoHTML}<h1>${E(k.brand)}</h1><div class='cov-rule'></div><p class='cov-sub'>${E(k.sub)}</p></div>`);
+    h.push(`<div class='cov-bot'><div><p class='lbl'>PEMESANAN</p><p class='txt'>${kontak}</p></div>`);
+    h.push(`<div><p class='lbl'>KETERANGAN</p><p class='txt'>${E(k.catatan1)}<br>${E(k.catatan2)}</p></div></div></div></section>`);
+  } else {
+    h.push("<section class='page cover'><div class='cov-in'>");
+    h.push(`<div class='cov-top'><span>${E(k.eyebrow)}</span><span>${E(k.edisi)}</span></div>`);
+    h.push(`<div class='cov-mid'>${logoHTML}<h1>${E(k.brand)}</h1><div class='cov-rule'></div><p class='cov-sub'>${E(k.sub)}</p></div>`);
+    h.push(`<div class='cov-bot'><div><p class='lbl'>Pemesanan</p><p class='txt'>${kontak}</p></div>`);
+    h.push(`<div><p class='lbl'>Keterangan</p><p class='txt'>${E(k.catatan1)}<br>${E(k.catatan2)}</p></div></div></div></section>`);
+  }
+  /* isi: per kategori, halaman pertama berpita judul */
+  const footKiri = `${E(k.brand)} &middot; ${E(k.sub)}`;
+  let noHal = 0, i = 0;
+  while (i < items.length){
+    let j = i; while (j + 1 < items.length && items[j + 1].kat === items[i].kat) j++;
+    const kat = items[i].kat, jml = j - i + 1;
+    let pos = i, pertama = true;
+    while (pos <= j){
+      const kap = nCols * (pertama ? nRow1 : nRow2);
+      const batas = Math.min(j, pos + kap - 1);
+      noHal++;
+      const nomor = String(noHal).padStart(2, "0");
+      if (putih){
+        h.push("<section class='page'><div class='deco'></div><div class='body'>");
+        if (pertama) h.push(`<header class='kat'><h2>${E(kat)}</h2><span><span class='dia'>&#9670;</span>${jml} SKU</span></header>`);
+      } else {
+        h.push(`<section class='page'><header class='run'><span><span class='dia'>&#9670;</span>${E(kat)}</span><span class='pg'>${nomor}</span></header><div class='body'>`);
+        if (pertama) h.push(`<div class='band'><h2>${E(kat)}</h2><span>${jml} SKU</span></div>`);
+      }
+      h.push("<div class='grid'>");
+      for (let t = pos; t <= batas; t++) h.push(kartu(items[t]));
+      h.push("</div></div>");
+      h.push(putih
+        ? `<footer class='foot'><span>${footKiri}</span><span class='pg'>${nomor}</span><span>${E(k.labelKanan)}</span></footer></section>`
+        : `<div class='strip'><span>${E(k.brand)}</span><span class='b'>${E(k.labelKanan)}</span></div></section>`);
+      pos = batas + 1; pertama = false;
+    }
+    i = j + 1;
+  }
+  /* penutup */
+  if (putih){
+    h.push(`<section class='page'><div class='deco'></div><div class='mark'>${E(inisial)}</div><div class='body end'>`);
+    h.push("<div class='end-rule'></div><p class='end-thanks'>Terima kasih atas kepercayaan Anda.</p>");
+    h.push(`<p class='end-contact'>${kontak}</p><p class='end-meta'>${E(k.edisi)} &middot; ${items.length} SKU</p>`);
+    h.push(`</div><footer class='foot'><span>${footKiri}</span><span class='pg'></span><span>${E(k.labelKanan)}</span></footer></section>`);
+  } else {
+    h.push(`<section class='page cover end'><div class='cov-in'><div class='end-mid'>${logoHTML}`);
+    h.push("<p class='end-thanks'>Terima kasih atas kepercayaan Anda.</p><div class='cov-rule'></div>");
+    h.push(`<p class='end-contact'>${kontak}</p><p class='end-meta'>${E(k.edisi)} &middot; ${items.length} SKU</p>`);
+    h.push("</div></div></section>");
+  }
+  h.push("</body></html>");
+  return h.join("\n");
+}
+
+/* ---------- pratinjau & cetak ----------
+   Katalog dibuka di jendela pratinjau di dalam aplikasi, bukan file yang harus
+   dicari lalu dibuka sendiri. Tombol Cetak langsung membuka dialog cetak peramban
+   — pilih "Simpan sebagai PDF", selesai. Pengaturan kertas A4 tanpa margin dan
+   warna latar sudah ditanam di dalam katalognya, jadi tidak perlu diatur lagi. */
+function bukaPratinjauKatalog(){
+  const k = KS();
+  const { items } = katalogTerpilih(k);
+  if (!items.length){
+    pesan("Tidak ada SKU yang lolos saringan.\n\n" +
+      "Periksa Mode Seleksi di Pengaturan Katalog:\n" +
+      "• Stok di atas 0 — hanya SKU yang stoknya lebih dari nol\n" +
+      "• Bertanda x — hanya baris yang kolom Tampilkan-nya berisi x\n" +
+      "• Semua — seluruh SKU", "Katalog kosong");
+    return;
+  }
+  const html = bangunKatalogHTML(items, k);
+  const { hal } = hitungHalaman(items, k);
+  let lapis = document.getElementById("ktpv");
+  if (!lapis){
+    lapis = document.createElement("div"); lapis.id = "ktpv";
+    document.body.appendChild(lapis);
+  }
+  lapis.innerHTML = `<div class="ktpv-bar">
+      <strong>${esc(k.brand)}</strong>
+      <span class="status">${items.length} SKU · ${hal} halaman · tema ${k.tema === "putih" ? "Putih" : "Noir"}</span>
+      <span class="status" id="ktpv-foto">Memuat foto…</span>
+      <span class="spacer"></span>
+      <button type="button" class="btn" id="ktpv-html">Unduh HTML</button>
+      <button type="button" class="btn primary" id="ktpv-cetak">Cetak / Simpan PDF</button>
+      <button type="button" class="btn ghost" id="ktpv-tutup">Tutup</button>
+    </div><iframe id="ktpv-frame" title="Pratinjau katalog"></iframe>`;
+  lapis.hidden = false;
+  document.body.style.overflow = "hidden";
+  const fr = document.getElementById("ktpv-frame");
+  fr.srcdoc = html;
+  fr.onload = () => {
+    /* Foto dimuat lebih dulu sebelum mencetak; kalau belum, halaman PDF-nya bolong. */
+    const doc = fr.contentDocument; if (!doc) return;
+    const img = [...doc.images];
+    const lbl = document.getElementById("ktpv-foto");
+    let beres = 0, gagal = 0;
+    const perbarui = () => { if (!lbl) return;
+      lbl.textContent = beres + gagal >= img.length
+        ? (gagal ? `${gagal} foto gagal dimuat — linknya mungkin sudah mati` : "Semua foto termuat")
+        : `Memuat foto ${beres + gagal}/${img.length}…`; };
+    img.forEach(im => {
+      if (im.complete){ im.naturalWidth ? beres++ : gagal++; return; }
+      im.addEventListener("load", () => { beres++; perbarui(); }, { once:true });
+      im.addEventListener("error", () => { gagal++; perbarui(); }, { once:true });
+    });
+    perbarui();
+  };
+  document.getElementById("ktpv-tutup").onclick = () => { lapis.hidden = true; lapis.innerHTML = ""; document.body.style.overflow = ""; };
+  document.getElementById("ktpv-cetak").onclick = () => { try { fr.contentWindow.focus(); fr.contentWindow.print(); } catch(e){ pesan("Peramban menolak mencetak dari pratinjau. Pakai Unduh HTML, buka filenya, lalu tekan Ctrl+P."); } };
+  document.getElementById("ktpv-html").onclick = async () => {
+    const nama = (String(k.namaFile || "Katalog").replace(/[\\/:*?"<>|]+/g, "-").trim() || "Katalog") + ".html";
+    const dl = await use("downloads");
+    if (dl){ try { await dl.save({ filename: nama, data: html }); note("Katalog terunduh"); return; } catch(e){} }
+    openText("Katalog HTML", "Salin seluruh isi di bawah ke berkas bernama " + nama + ".", html);
+  };
+}
+
+/* ---------- foto: kecilkan lalu unggah ke Supabase Storage ----------
+   Foto dari kamera HP bisa 3–6 MB. Dikecilkan dulu di peramban jadi sisi terpanjang
+   900 px, JPEG mutu 0,82 — sekitar 60–120 KB, tetap tajam untuk dicetak A4 empat
+   kolom, dan 1 GB jatah gratis Supabase cukup untuk sekitar 10.000 foto. */
+async function kecilkanGambar(file, maks, mutu){
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((ok, gagal) => { const i = new Image(); i.onload = () => ok(i); i.onerror = gagal; i.src = url; });
+    const skala = Math.min(1, maks / Math.max(img.naturalWidth, img.naturalHeight));
+    const w = Math.max(1, Math.round(img.naturalWidth * skala)), h = Math.max(1, Math.round(img.naturalHeight * skala));
+    const cv = document.createElement("canvas"); cv.width = w; cv.height = h;
+    const cx = cv.getContext("2d");
+    cx.fillStyle = "#ffffff"; cx.fillRect(0, 0, w, h);      // PNG transparan jangan jadi hitam
+    cx.drawImage(img, 0, 0, w, h);
+    return await new Promise(ok => cv.toBlob(ok, "image/jpeg", mutu));
+  } finally { URL.revokeObjectURL(url); }
+}
+const jalurStorage = u => { const m = String(u || "").match(/\/storage\/v1\/object\/public\/katalog\/(.+)$/); return m ? decodeURIComponent(m[1].split("?")[0]) : ""; };
+async function unggahFotoKatalog(file, nama){
+  if (!SB || !AKUN) throw new Error("Masuk dulu untuk mengunggah foto.");
+  if (!/^image\//.test(file.type || "")) throw new Error(file.name + " bukan berkas gambar.");
+  const blob = await kecilkanGambar(file, 900, 0.82);
+  const pemilik = AKUN.induk || AKUN.id;
+  const aman = String(nama || "foto").replace(/[^A-Za-z0-9._()-]+/g, "-").slice(0, 60) || "foto";
+  const jalur = `${pemilik}/${aman}-${Date.now().toString(36)}.jpg`;
+  const { error } = await SB.storage.from(BUCKET_KATALOG).upload(jalur, blob,
+    { contentType:"image/jpeg", upsert:false, cacheControl:"31536000" });
+  if (error){
+    const t = String(error.message || error).toLowerCase();
+    if (t.includes("bucket") && t.includes("not found"))
+      throw new Error("Tempat penyimpanan foto belum dibuat. Jalankan supabase-katalog.sql di SQL Editor Supabase sekali saja.");
+    if (t.includes("row-level security") || t.includes("unauthorized") || t.includes("policy"))
+      throw new Error("Akun ini tidak diizinkan mengunggah foto. Pastikan supabase-katalog.sql sudah dijalankan.");
+    throw new Error(error.message || String(error));
+  }
+  return SB.storage.from(BUCKET_KATALOG).getPublicUrl(jalur).data.publicUrl;
+}
+async function hapusFotoLama(url){
+  const j = jalurStorage(url);
+  if (!j || !SB) return;
+  try { await SB.storage.from(BUCKET_KATALOG).remove([j]); } catch(e){}
+}
+/* satu pemilih berkas dipakai bergantian: foto satu baris, foto massal, atau logo */
+let ktUnggah = null;
+function pilihBerkasKatalog(tujuan, banyak){
+  ktUnggah = tujuan;
+  let inp = document.getElementById("kt-berkas");
+  if (!inp){
+    inp = document.createElement("input");
+    inp.type = "file"; inp.id = "kt-berkas"; inp.accept = "image/*"; inp.hidden = true;
+    document.body.appendChild(inp);
+    inp.onchange = () => { const f = [...inp.files]; inp.value = ""; if (f.length) prosesUnggahKatalog(f); };
+  }
+  inp.multiple = !!banyak;
+  inp.click();
+}
+async function prosesUnggahKatalog(files){
+  const t = ktUnggah; ktUnggah = null;
+  if (!t) return;
+  try {
+    if (t.jenis === "baris"){
+      const r = S.katalog[t.i]; if (!r) return;
+      note("Mengunggah foto " + (r.sku || "") + "…");
+      const lama = r.foto;
+      r.foto = await unggahFotoKatalog(files[0], r.sku);
+      await hapusFotoLama(lama);
+      touch(); note("Foto tersimpan");
+    } else if (t.jenis === "logo"){
+      note("Mengunggah logo…");
+      const lama = KS().logo;
+      setKS("logo", await unggahFotoKatalog(files[0], "logo"));
+      await hapusFotoLama(lama);
+      touch(); note("Logo tersimpan");
+    } else if (t.jenis === "massal"){
+      /* Nama berkas = nomor SKU. "1BOX-SLVR-(16-19).jpg" langsung menempel ke SKU itu. */
+      const idx = new Map((S.katalog || []).map((r, i) => [normKode(r.sku), i]));
+      let ok = 0; const tak = [], salah = [];
+      for (let n = 0; n < files.length; n++){
+        const f = files[n];
+        const sku = f.name.replace(/\.[a-z0-9]+$/i, "");
+        const i = idx.get(normKode(sku));
+        if (i === undefined){ tak.push(f.name); continue; }
+        note(`Mengunggah foto ${n + 1}/${files.length}…`);
+        try {
+          const lama = S.katalog[i].foto;
+          S.katalog[i].foto = await unggahFotoKatalog(f, S.katalog[i].sku);
+          await hapusFotoLama(lama); ok++;
+        } catch(e){ salah.push(f.name + " — " + (e.message || e)); if (/belum dibuat|tidak diizinkan|masuk dulu/i.test(String(e.message))) break; }
+      }
+      touch();
+      pesan(`${ok} foto terpasang ke SKU-nya.` +
+        (tak.length ? `\n\n${tak.length} berkas tidak menemukan SKU yang namanya sama:\n` + tak.slice(0, 12).join("\n") + (tak.length > 12 ? "\n…" : "") +
+          "\n\nNama berkas harus persis nomor SKU, misalnya 1BOX-SLVR-(16-19).jpg." : "") +
+        (salah.length ? `\n\n${salah.length} gagal diunggah:\n` + salah.slice(0, 6).join("\n") : ""), "Unggah foto massal");
+    }
+  } catch(e){ pesan(String(e.message || e), "Foto belum terunggah"); note(""); }
+}
+
+/* ---------- template impor ---------- */
+async function unduhTemplateKatalog(){
+  if (!await siapkanXlsx()){ pesan("Pembaca Excel gagal diunduh. Periksa koneksi internet lalu coba lagi."); return; }
+  const kol = ["Link Foto", "Kategori", "Nomor SKU", "Nama Produk", "Harga Katalog", "Stok", "Tampilkan (x)"];
+  const isi = (S.katalog || []).length
+    ? S.katalog.map(r => [r.foto || "", r.kategori || "", r.sku || "", r.nama || "",
+        kosongAngka(r.harga) ? "" : num(r.harga), kosongAngka(r.stok) ? "" : num(r.stok), r.tampil || ""])
+    : [["https://contoh.com/foto-cincin.jpg", "BEST SELLER", "1BOX-SLVR-(16-19)", "Cincin Silver Polos 1 Box", 56000, 12, "x"],
+       ["", "", "1BOX-CITA-LOVE-GOLD-(16-19)", "", 259000, 5, ""],
+       ["", "GOLD", "1BOX-CEKUMAL-GOLD-(16-19)", "", "", "", "x"]];
+  const petunjuk = [
+    ["CARA MENGISI TEMPLATE KATALOG"], [],
+    ["Kolom", "Wajib?", "Keterangan"],
+    ["Link Foto", "tidak", "Link foto (BigSeller, Google Drive publik, dll). Boleh kosong — foto bisa diunggah langsung di aplikasi."],
+    ["Kategori", "tidak", "Kosongkan untuk ditebak otomatis dari SKU memakai Aturan Kategori di Pengaturan Katalog. Kalau diisi, isian Anda yang menang."],
+    ["Nomor SKU", "YA", "Kunci setiap baris. Impor ulang dengan SKU yang sama akan MEMPERBARUI baris itu, bukan menambah baris kembar."],
+    ["Nama Produk", "tidak", "Hanya untuk memudahkan Anda mencari; tidak dicetak di katalog."],
+    ["Harga Katalog", "tidak", "Harga yang tampil di katalog. Kosongkan kalau ingin diambil dari aplikasi (Harga Modal × markup)."],
+    ["Stok", "tidak", "Stok yang dipakai untuk Mode Seleksi 'Stok di atas 0'. Kosongkan kalau ingin diambil dari stok akhir aplikasi."],
+    ["Tampilkan (x)", "tidak", "Isi x untuk SKU yang ingin dicetak saat Mode Seleksi = 'Bertanda x'."],
+    [],
+    ["Sumber harga dan stok (dari file ini atau dari aplikasi) diatur di halaman Pengaturan Katalog."],
+    ["File katalog Excel lama Anda (sheet Database Katalog) juga bisa langsung diimpor tanpa diubah."],
+  ];
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet([kol, ...isi]);
+  ws["!cols"] = [{ wch:48 }, { wch:16 }, { wch:34 }, { wch:30 }, { wch:14 }, { wch:8 }, { wch:13 }];
+  XLSX.utils.book_append_sheet(wb, ws, "Database Katalog");
+  const wp = XLSX.utils.aoa_to_sheet(petunjuk);
+  wp["!cols"] = [{ wch:18 }, { wch:9 }, { wch:110 }];
+  XLSX.utils.book_append_sheet(wb, wp, "Petunjuk");
+  const data = new Uint8Array(XLSX.write(wb, { bookType:"xlsx", type:"array" }));
+  const dl = await use("downloads");
+  if (dl){ try { await dl.save({ filename:"template-katalog.xlsx", data }); return; } catch(e){ if (e && e.code === "declined") return; } }
+  pesan("Unduhan gagal. Coba lagi dari peramban lain.");
+}
+
+/* Kalau yang diimpor adalah berkas katalog Excel lama, sheet PENGATURAN-nya ikut
+   dibaca supaya Anda tidak perlu mengetik ulang nama brand, kontak, dan tata letak. */
+function bacaPengaturanLama(){
+  const PETA = {
+    "nama brand":"brand", "sub judul":"sub", "label kiri atas sampul":"eyebrow", "edisi":"edisi",
+    "whatsapp":"wa", "instagram":"ig", "tiktok":"tt", "facebook":"fb", "catatan 1":"catatan1", "catatan 2":"catatan2",
+    "mode seleksi":"mode", "kategori disertakan":"katFilter", "urutkan berdasarkan":"urut",
+    "kolom per baris":"kolom", "baris di halaman kategori":"baris1", "baris di halaman lanjutan":"baris2",
+    "penyesuaian harga":"sesuaiPersen", "tampilkan stok":"tampilStok", "kualitas foto":"px",
+    "nama file output":"namaFile", "urutan kategori":"urutKat", "logo toko":"logo", "tinggi logo":"logoTinggi",
+    "label kanan kaki halaman":"labelKanan", "aturan kategori otomatis":"aturanKat", "kategori bawaan":"katBawaan",
+  };
+  const hasil = {};
+  for (const b of (IMP && IMP.buku) || []){
+    if (!b.book) continue;
+    const nm = b.book.SheetNames.find(n => /pengaturan/i.test(n));
+    if (!nm) continue;
+    for (const row of bacaSheet(b.book, nm)){
+      const lbl = norm(String(row[0] ?? "")).replace(/\s*\(.*\)\s*/g, " ").trim();
+      const kunci = Object.keys(PETA).find(p => lbl === p || lbl.startsWith(p));
+      const v = row[1];
+      if (!kunci || v === undefined || v === null || String(v).trim() === "") continue;
+      let isi = typeof v === "string" ? v.trim() : v;
+      const f = PETA[kunci];
+      if (f === "mode") isi = /^x$/i.test(isi) ? "x" : /semua/i.test(isi) ? "semua" : "stok";
+      else if (f === "urut") isi = /harga/i.test(isi) ? "harga" : "sku";
+      else if (f === "tampilStok") isi = /^(ya|y|yes)$/i.test(String(isi));
+      else if (["kolom","baris1","baris2","sesuaiPersen","px","logoTinggi"].includes(f)) isi = num(isi);
+      hasil[f] = isi;
+    }
+  }
+  return hasil;
+}
+
+/* ---------- halaman data katalog ---------- */
+let mentahKatalog = false;
+function viewKatalog(){
+  const k = KS();
+  const u = S.ui || (S.ui = {});
+  const semua = S.katalog || [];
+  const { items, alasan } = katalogTerpilih(k);
+  const lolos = new Set(items.map(it => normKode(it.sku)));
+  const { hal } = items.length ? hitungHalaman(items, k) : { hal:0 };
+  const tanpaFoto = semua.filter(r => !String(r.foto || "").trim()).length;
+  const cari = norm(u.ktCari || "");
+  const saring = u.ktSaring || "semua";
+  const A = aturanKategori(k.aturanKat);
+  let baris = semua.map((r, i) => ({ r, i, v: nilaiKatalog(r, k) }));
+  if (cari) baris = baris.filter(({ r }) => norm(r.sku).includes(cari) || norm(r.nama).includes(cari) || norm(r.kategori).includes(cari));
+  if (saring === "tampil") baris = baris.filter(({ r }) => lolos.has(normKode(r.sku)));
+  else if (saring === "tidak") baris = baris.filter(({ r }) => !lolos.has(normKode(r.sku)));
+  else if (saring === "tanpafoto") baris = baris.filter(({ r }) => !String(r.foto || "").trim());
+  else if (saring === "tanpaharga") baris = baris.filter(({ v }) => v.harga == null);
+  const LIM = 150;
+  const semuaTampil = u.ktSemua || baris.length <= LIM;
+  const tampil = semuaTampil ? baris : baris.slice(0, LIM);
+  const asal = a => a === "app" ? `<span class="chip" style="font-size:9.5px;padding:1px 6px" title="Diambil dari data aplikasi">app</span>` : "";
+
+  const body = tampil.map(({ r, i, v }) => {
+    const masuk = lolos.has(normKode(r.sku));
+    const foto = String(r.foto || "").trim();
+    return `<tr>
+      <td style="width:62px"><div class="ktfoto">${foto ? `<img src="${esc(foto)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : "<span>tanpa<br>foto</span>"}</div></td>
+      <td><input type="text" data-kt="${i}:sku" value="${esc(r.sku || "")}" style="font-weight:600">
+        <input type="text" data-kt="${i}:nama" value="${esc(r.nama || "")}" placeholder="nama (tidak dicetak)" style="margin-top:4px;font-size:12px"></td>
+      <td><input type="text" data-kt="${i}:kategori" value="${esc(r.kategori || "")}" placeholder="${esc(kategoriKatalog({ sku:r.sku }, k, A))}"></td>
+      <td><input class="num n" data-kt="${i}:harga" value="${kosongAngka(r.harga) ? "" : RE_ID.format(num(r.harga))}" placeholder="dari app" inputmode="numeric"></td>
+      <td><input class="num n" data-kt="${i}:stok" value="${kosongAngka(r.stok) ? "" : RE_ID.format(num(r.stok))}" placeholder="dari app" inputmode="numeric"></td>
+      <td style="text-align:center"><input type="checkbox" data-ktx="${i}"${tandaTampil(r.tampil) ? " checked" : ""} title="Tandai untuk Mode Seleksi 'Bertanda x'"></td>
+      <td class="calc">${v.harga != null ? rupiahKatalog(v.harga) + asal(v.asalHarga) : `<span style="color:var(--warn)">tanpa harga</span>`}
+        <div style="font-size:11.5px;color:var(--ink3)">stok ${v.stok != null ? RE_ID.format(Math.round(v.stok)) : "—"}${asal(v.asalStok)}</div></td>
+      <td>${masuk ? `<span class="chip ok" style="font-size:10.5px">tampil</span>` : `<span class="chip" style="font-size:10.5px;background:var(--surface3);color:var(--ink3)">tidak</span>`}</td>
+      <td style="white-space:nowrap">
+        <button class="btn" style="padding:3px 9px;font-size:12px" data-ktup="${i}" title="Unggah foto dari perangkat">Unggah</button>
+        <button class="btn" style="padding:3px 9px;font-size:12px" data-ktlink="${i}" title="Tempel link foto">Link</button>
+        <button class="rowdel" data-ktdel="${i}" title="Hapus SKU dari katalog">&times;</button></td>
+    </tr>`;
+  }).join("");
+
+  return `
+  <div class="pagehead"><h1>Katalog Produk</h1>${pandu(esc(PANDUAN.katalog))}</div>
+  <div class="toolbar">
+    <button class="btn primary" id="kt-buat"${items.length ? "" : " disabled"}>Buat katalog${items.length ? " · " + items.length + " SKU" : ""}</button>
+    <button class="btn" data-import="katalog">Impor data katalog</button>
+    <button class="btn" id="kt-template">Unduh template</button>
+    <button class="btn" id="kt-massal" title="Pilih banyak foto sekaligus; nama berkas = nomor SKU">Unggah foto massal</button>
+    <button class="btn" data-nav="katalogSet">Pengaturan katalog</button>
+    <span class="spacer"></span>
+    <button class="btn ghost" id="kt-mentah">Data mentah</button>
+  </div>
+  <div class="kpis">
+    <div class="kpi hero"><div class="k">Masuk katalog</div><div class="v">${RE_ID.format(items.length)}</div>
+      <div class="m">${hal ? hal + " halaman A4 · tema " + (k.tema === "putih" ? "Putih" : "Noir") : "belum ada yang lolos"}</div></div>
+    <div class="kpi"><div class="k">Di daftar</div><div class="v">${RE_ID.format(semua.length)}</div>
+      <div class="m">mode: ${k.mode === "x" ? "bertanda x" : k.mode === "semua" ? "semua SKU" : "stok di atas 0"}</div></div>
+    <div class="kpi"><div class="k">Tidak lolos</div><div class="v">${RE_ID.format(semua.length - items.length)}</div>
+      <div class="m">${[alasan.stok ? alasan.stok + " stok 0" : "", alasan.tanda ? alasan.tanda + " tanpa x" : "",
+        alasan.harga ? alasan.harga + " tanpa harga" : "", alasan.kategori ? alasan.kategori + " kategori disaring" : ""].filter(Boolean).join(" · ") || "—"}</div></div>
+    <div class="kpi"><div class="k">Tanpa foto</div><div class="v${tanpaFoto ? " neg" : ""}">${RE_ID.format(tanpaFoto)}</div>
+      <div class="m">tercetak "Tanpa Foto"</div></div>
+  </div>
+  ${semua.length ? `<div class="toolbar">
+    <div class="field" style="max-width:260px"><label>Cari SKU, nama, atau kategori</label>
+      <input type="text" id="kt-cari" value="${esc(u.ktCari || "")}" placeholder="ketik untuk menyaring"></div>
+    <div class="field" style="max-width:230px"><label>Tampilkan</label>
+      <select id="kt-saring">${[["semua","Semua SKU"],["tampil","Yang masuk katalog"],["tidak","Yang tidak masuk"],
+        ["tanpafoto","Yang belum ada foto"],["tanpaharga","Yang belum ada harga"]].map(([v,t]) =>
+        `<option value="${v}"${saring === v ? " selected" : ""}>${t}</option>`).join("")}</select></div>
+    <span class="spacer"></span>
+    <button class="btn" data-add="katalog">+ SKU baru</button>
+  </div>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Foto</th><th style="width:240px">SKU</th><th style="width:140px">Kategori</th>
+      <th class="r" style="width:118px">Harga impor</th><th class="r" style="width:84px">Stok impor</th>
+      <th style="width:44px" title="Bertanda x">x</th><th class="r" style="width:150px">Di katalog</th>
+      <th style="width:76px"></th><th style="width:170px"></th></tr></thead>
+    <tbody>${body || `<tr><td colspan="9"><div class="empty">Tidak ada SKU yang cocok.</div></td></tr>`}</tbody>
+  </table></div>
+  ${!semuaTampil ? `<div class="toolbar" style="margin-top:10px"><span class="status">Menampilkan ${LIM} dari ${baris.length} SKU.</span>
+    <button class="btn ghost" id="kt-semua">Tampilkan semua</button></div>` : ""}`
+  : `<div class="tablewrap"><div class="empty">Belum ada SKU di katalog.<br><br>
+      Tekan <strong>Impor data katalog</strong> dan pilih berkas Excel katalog lama Anda — sheet
+      <em>Database Katalog</em> dan <em>PENGATURAN</em>-nya langsung terbaca, tanpa perlu diubah.
+      Atau unduh template dulu kalau mulai dari nol.</div></div>`}`;
+}
+
+/* ---------- halaman pengaturan katalog ---------- */
+function viewKatalogSet(){
+  const k = KS();
+  const { items } = katalogTerpilih(k);
+  const { hal, kategori } = items.length ? hitungHalaman(items, k) : { hal:0, kategori:0 };
+  const teks = (key, label, ket, ph) => `<div class="field"><label>${esc(label)}</label>
+    <input type="text" data-ks="${key}" value="${esc(k[key] ?? "")}" placeholder="${esc(ph || "")}">
+    ${ket ? `<span style="font-size:11px;color:var(--ink3)">${esc(ket)}</span>` : ""}</div>`;
+  const angka = (key, label, ket, min, max, langkah) => `<div class="field"><label>${esc(label)}</label>
+    <input type="number" data-ks="${key}" value="${esc(k[key] ?? "")}" min="${min}" max="${max}" step="${langkah || 1}">
+    ${ket ? `<span style="font-size:11px;color:var(--ink3)">${esc(ket)}</span>` : ""}</div>`;
+  const pilih = (key, label, opsi, ket) => `<div class="field"><label>${esc(label)}</label>
+    <select data-ks="${key}">${opsi.map(([v, t]) => `<option value="${esc(v)}"${String(k[key]) === String(v) ? " selected" : ""}>${esc(t)}</option>`).join("")}</select>
+    ${ket ? `<span style="font-size:11px;color:var(--ink3)">${esc(ket)}</span>` : ""}</div>`;
+  const kartu = (judul, sub, isi) => `<div class="card" style="margin-bottom:16px"><div class="bd">
+    <div class="sh">${esc(judul)}</div>${sub ? `<div class="ss">${esc(sub)}</div>` : ""}
+    <div class="grid2" style="margin-top:12px">${isi}</div></div></div>`;
+  const stokAppNol = k.sumberStok === "app" && (S.katalog || []).length
+    ? (S.katalog || []).filter(r => { const s = stokApp(r.sku); return s != null && s <= 0; }).length : 0;
+
+  return `
+  <div class="pagehead"><h1>Pengaturan Katalog</h1>${pandu(esc(PANDUAN.katalogSet))}</div>
+  <div class="toolbar">
+    <button class="btn primary" id="kt-buat"${items.length ? "" : " disabled"}>Lihat hasil katalog</button>
+    <button class="btn" data-nav="katalog">← Data katalog</button>
+    <span class="spacer"></span>
+    <span class="status">${items.length ? `${items.length} SKU · ${kategori} kategori · ${hal} halaman A4` : "Belum ada SKU yang lolos saringan"}</span>
+  </div>
+
+  ${kartu("Tampilan", "Dua gaya dari katalog Excel Anda", `
+    ${pilih("tema", "Tema", [["noir","Noir — sampul gelap, aksen kuningan"],["putih","Putih — bingkai garis ganda, huruf Playfair"]])}
+    ${angka("kolom", "Kolom per baris", "3 = foto lebih besar · 4 = standar · 5 = padat", 2, 6)}
+    ${angka("baris1", "Baris di halaman kategori", "Halaman yang ada judul kategorinya", 1, 8)}
+    ${angka("baris2", "Baris di halaman lanjutan", "Halaman tanpa judul kategori", 1, 8)}
+    ${pilih("tampilStok", "Tampilkan stok di kartu", [["false","Tidak"],["true","Ya"]])}
+    ${angka("px", "Kualitas foto (px)", "Untuk link BigSeller. 700 cukup tajam untuk cetak, 300 = ringan. 0 = link apa adanya", 0, 1500, 50)}
+  `)}
+
+  ${kartu("Sampul & identitas", "", `
+    ${teks("brand", "Nama brand", "Judul besar di sampul", S.setup.nama)}
+    ${teks("sub", "Sub judul", "Di sampul dan kaki halaman", "KATALOG PRODUK")}
+    ${teks("eyebrow", "Label kiri atas sampul", "", "GROSIR CINCIN")}
+    ${teks("edisi", "Edisi", "Ganti tiap kali memperbarui katalog", "EDISI SEPTEMBER 2026")}
+    <div class="field"><label>Logo</label>
+      <div style="display:flex;gap:8px;align-items:center">
+        ${k.logo ? `<img src="${esc(k.logo)}" alt="" referrerpolicy="no-referrer" style="height:38px;max-width:90px;object-fit:contain;border:1px solid var(--line);border-radius:6px;background:#fff;padding:3px">` : ""}
+        <input type="text" data-ks="logo" value="${esc(k.logo || "")}" placeholder="link gambar, atau unggah →" style="flex:1">
+        <button class="btn" id="kt-logo" type="button">Unggah</button></div></div>
+    ${angka("logoTinggi", "Tinggi logo (mm)", "Ukuran logo di sampul", 5, 60)}
+    ${teks("labelKanan", "Label kanan kaki halaman", "Mis. HARGA PER BOX. Kosongkan kalau tidak perlu", "HARGA PER BOX")}
+    ${teks("namaFile", "Nama berkas saat diunduh", "Tanpa .html", "Katalog")}
+  `)}
+
+  ${kartu("Kontak & keterangan", "Kosongkan yang tidak ingin ditampilkan", `
+    ${teks("wa", "WhatsApp", "", "08xx")}
+    ${teks("ig", "Instagram", "", "@toko")}
+    ${teks("tt", "TikTok", "", "@toko")}
+    ${teks("fb", "Facebook", "", "")}
+    ${teks("catatan1", "Catatan 1", "", "Harga tertera adalah harga grosir per box.")}
+    ${teks("catatan2", "Catatan 2", "", "Stok berubah setiap hari, konfirmasi sebelum transfer.")}
+  `)}
+
+  ${kartu("SKU mana yang masuk", "Aturan pemilihan dan urutan", `
+    ${pilih("mode", "Mode seleksi", [["stok","Stok di atas 0"],["x","Hanya yang bertanda x"],["semua","Semua SKU"]])}
+    ${pilih("urut", "Urutkan dalam kategori", [["sku","Nomor SKU (A–Z)"],["harga","Harga (murah ke mahal)"]])}
+    ${teks("katFilter", "Kategori yang disertakan", "Kosongkan = semua. Contoh: GOLD, SILVER", "semua kategori")}
+    ${teks("urutKat", "Urutan kategori", "Urutan bagian di katalog. Sisanya menyusul, kategori bawaan paling akhir", "BEST SELLER, GOLD, SILVER")}
+    ${teks("aturanKat", "Aturan kategori otomatis", "NAMA=pola1,pola2; dipisah titik koma. Dicek dari kiri, yang cocok duluan menang. Dipakai kalau kolom Kategori kosong", "GOLD=-GOLD; SILVER=-SILVER")}
+    ${teks("katBawaan", "Kategori bawaan", "Kalau tidak ada pola yang cocok", "MODEL LAINNYA")}
+  `)}
+
+  ${kartu("Asal harga & stok", "Dari berkas yang Anda impor, atau dari pembukuan di aplikasi ini", `
+    ${pilih("sumberHarga", "Harga yang dicetak", [
+      ["impor","Dari berkas impor katalog"],
+      ["modal","Dari aplikasi: Harga Modal × markup"],
+      ["jual","Dari aplikasi: Harga Jual Normal di Master Produk"]])}
+    ${angka("markup", "Markup (kali harga modal)", "1,4 = modal + 40%, sama dengan rumus lama =B2*1.4", 1, 10, 0.05)}
+    ${angka("sesuaiPersen", "Penyesuaian harga (%)", "10 = semua harga naik 10% khusus katalog ini", -90, 500, 1)}
+    ${pilih("sumberStok", "Stok untuk seleksi", [["impor","Dari berkas impor katalog"],["app","Dari aplikasi: stok akhir hari ini"]])}
+    ${pilih("cadangan", "Kalau kosong di sumber utama", [["true","Ambil dari sumber yang satunya"],["false","Biarkan kosong"]],
+      "Mis. harga impor kosong → pakai Harga Modal × markup")}
+  `)}
+  ${stokAppNol ? `<div class="warnbox"><strong>${stokAppNol} SKU stoknya nol atau minus menurut aplikasi.</strong>
+    Stok akhir di aplikasi hanya benar kalau Stok Awal di Master Produk dan tabel Pembelian sudah diisi.
+    Selama itu belum, pakai stok dari berkas impor supaya katalog tidak kosong.</div>` : ""}`;
 }
 
 
@@ -5887,9 +6676,47 @@ document.addEventListener("click", async e => {
     if (page === "ringkasan") render();   // sekalian, jangan hitung buku dua kali
     return;
   }
+  /* ---- katalog ---- */
+  if (t.id === "kt-buat"){ bukaPratinjauKatalog(); return; }
+  if (t.id === "kt-template"){ await unduhTemplateKatalog(); return; }
+  if (t.id === "kt-massal"){
+    if (!SB){ pesan("Unggah foto hanya tersedia di versi web yang tersambung ke Supabase."); return; }
+    pesan("Pilih banyak foto sekaligus. Nama tiap berkas harus persis nomor SKU-nya, misalnya\n1BOX-SLVR-(16-19).jpg\n\nFoto dikecilkan otomatis sebelum diunggah, jadi foto langsung dari kamera HP pun tidak masalah.", "Unggah foto massal")
+      .then(() => pilihBerkasKatalog({ jenis:"massal" }, true));
+    return;
+  }
+  if (t.id === "kt-logo"){ pilihBerkasKatalog({ jenis:"logo" }, false); return; }
+  if (t.id === "kt-mentah"){ mentahKatalog = true; render(); return; }
+  if (t.id === "kt-rapi"){ mentahKatalog = false; render(); return; }
+  if (t.id === "kt-semua"){ (S.ui ||= {}).ktSemua = true; render(); return; }
+  const ktup = t.closest("[data-ktup]");
+  if (ktup){ pilihBerkasKatalog({ jenis:"baris", i: +ktup.dataset.ktup }, false); return; }
+  const ktlink = t.closest("[data-ktlink]");
+  if (ktlink){
+    const r = S.katalog[+ktlink.dataset.ktlink]; if (!r) return;
+    const baru = await kotakIsi("Link foto " + (r.sku || ""), "Tempel link gambar (https://…). Kosongkan untuk menghapus foto.");
+    if (baru === null) return;
+    const lama = r.foto;
+    r.foto = String(baru).trim();
+    if (lama && lama !== r.foto) hapusFotoLama(lama);
+    touch(); return;
+  }
+  const ktdel = t.closest("[data-ktdel]");
+  if (ktdel){
+    const i = +ktdel.dataset.ktdel, r = S.katalog[i]; if (!r) return;
+    if (!await konfirmasi("Hapus " + (r.sku || "baris ini") + " dari katalog?", "Hapus SKU", "Hapus")) return;
+    hapusFotoLama(r.foto);
+    S.katalog.splice(i, 1); touch(); return;
+  }
   const add = t.closest("[data-add]");
   if (add){
     const k = add.dataset.add;
+    if (k === "katalog"){
+      S.katalog.unshift({ foto:"", kategori:"", sku:"", nama:"", harga:"", stok:"", tampil:"" });
+      (S.ui ||= {}).ktCari = ""; S.ui.ktSaring = "semua";
+      touch(); setTimeout(() => { const el = document.querySelector('[data-kt="0:sku"]'); if (el) el.focus(); }, 30);
+      return;
+    }
     if (k === "jurnal") S.jurnal.push({ tgl: S.setup.mulai, ket: "",
       baris: [{ kode:"7-180", d:0, k:0 }, { kode:"1-110", d:0, k:0 }] });
     else S[k].push(Object.assign({ tgl: S.setup.mulai }, TABLES[k].def||{}));
@@ -6163,8 +6990,8 @@ addEventListener("scroll", () => { jbox.classList.remove("on"); }, true);
 
 document.addEventListener("input", e => {
   const id = e.target.id;
-  if (id !== "sku-cari" && id !== "resep-cari") return;
-  const simpanKe = id === "sku-cari" ? "skuCari" : "resepCari";
+  if (id !== "sku-cari" && id !== "resep-cari" && id !== "kt-cari") return;
+  const simpanKe = id === "sku-cari" ? "skuCari" : id === "kt-cari" ? "ktCari" : "resepCari";
   (S.ui ||= {})[simpanKe] = e.target.value;
   clearTimeout(window.__cariTimer);
   window.__cariTimer = setTimeout(() => { const v = e.target.value; render();
@@ -6185,6 +7012,25 @@ document.addEventListener("change", e => {
     else { l[f] = num(t.value); if (num(t.value)) l[f === "d" ? "k" : "d"] = 0; }
     touch(); return;
   }
+  if (t.dataset.kt){
+    const [i, f] = t.dataset.kt.split(":");
+    const r = S.katalog[+i]; if (!r) return;
+    const v = t.value.trim();
+    r[f] = (f === "harga" || f === "stok") ? (v === "" ? "" : num(v)) : v;
+    touch(); return;
+  }
+  if (t.dataset.ktx){
+    const r = S.katalog[+t.dataset.ktx]; if (!r) return;
+    r.tampil = t.checked ? "x" : ""; touch(); return;
+  }
+  if (t.dataset.ks){
+    const kunci = t.dataset.ks;
+    let v = t.value;
+    if (t.type === "number") v = v === "" ? KATALOG_BAWAAN[kunci] : Number(v);
+    else if (v === "true" || v === "false") v = v === "true";
+    setKS(kunci, v); touch(); return;
+  }
+  if (t.id === "kt-saring"){ (S.ui ||= {}).ktSaring = t.value; S.ui.ktSemua = false; render(); return; }
   const c = t.dataset.cell;
   if (c){
     const [k,i,f] = c.split(":");
@@ -6362,6 +7208,15 @@ const ALIAS = {
     sku:["sku komponen","komponen","sku satuan","satuan","child sku","component sku","sub sku","sku anak","sku"],
     qty:["qty","jumlah","kuantitas","quantity","qty komponen","jumlah per paket","rasio"],
     nama:["nama produk","nama barang","nama komponen","keterangan","catatan"],
+  },
+  katalog: {
+    foto:["link foto","foto","url foto","link gambar","gambar","image","image url","foto produk"],
+    kategori:["kategori","kategori manual","category"],
+    sku:["nomor sku","sku","kode sku","kode barang","seller sku","nomor referensi sku","kode"],
+    nama:["nama produk","nama barang","nama","keterangan"],
+    harga:["harga katalog","harga grosir","harga jual","harga"],
+    stok:["stok","stock","semua total stok","jumlah stok","total stok"],
+    tampil:["tampilkan x","tampilkan","print x","print","pilih","tanda pilih","tanda"],
   },
   produk: { sku:["id produk","product id","sku"], kode:["sku","kode sendiri","kode produk","kode barang","nomor referensi sku"],
     nama:["nama produk","nama barang"], kategori:["kategori"],
@@ -6643,8 +7498,8 @@ function renderStep1(){
     <div class="steps"><b>1 · Ambil file</b><span>→</span><span>2 · Cocokkan kolom</span><span>→</span><span>3 · Impor</span></div>
     <div class="drop" id="drop">
       <button type="button" class="btn primary" id="pick">Pilih file export platform</button>
-      <p>atau seret file ke sini — boleh <strong>banyak file sekaligus</strong> — <code>.xlsx</code>, <code>.xls</code>, <code>.csv</code></p>
-      <input type="file" id="file" accept=".xlsx,.xls,.csv,.txt" multiple hidden>
+      <p>atau seret file ke sini — boleh <strong>banyak file sekaligus</strong> — <code>.xlsx</code>, <code>.xlsm</code>, <code>.xls</code>, <code>.csv</code></p>
+      <input type="file" id="file" accept=".xlsx,.xlsm,.xls,.csv,.txt" multiple hidden>
     </div>
     <div class="hint">File export marketplace boleh diunggah apa adanya: sheet berganda, baris judul bertingkat, dan angka biaya bernilai minus semuanya ditangani.
       Kalau setahun terpecah menjadi belasan file bulanan, pilih atau seret semuanya sekaligus — isinya digabung berdasarkan nama kolom, dan file kembar (nama &amp; ukuran sama) dibuang otomatis.</div>
@@ -6706,8 +7561,8 @@ function siapkanXlsx(){
 }
 
 async function readFiles(list){
-  let files = [...list].filter(f => /\.(xlsx|xls|csv|txt)$/i.test(f.name));
-  if (!files.length){ pesan("Tidak ada file yang bisa dibaca. Formatnya harus .xlsx, .xls, atau .csv."); return; }
+  let files = [...list].filter(f => /\.(xlsx|xlsm|xls|csv|txt)$/i.test(f.name));
+  if (!files.length){ pesan("Tidak ada file yang bisa dibaca. Formatnya harus .xlsx, .xlsm, .xls, atau .csv."); return; }
   // file kembar (nama + ukuran sama) dibuang — kalau tidak, omzetnya terhitung dua kali
   const lihat = new Set(), kembar = [];
   files = files.filter(f => { const k = f.name + "|" + f.size;
@@ -6793,7 +7648,8 @@ function pilihSheet(book){
                  order:/penghasilan|income|pesanan|order|ordersku/i,
                  mutasi:/riwayat penarikan|saldo|wallet|transaksi|transaction/i,
                  saldo:/riwayat penarikan|penarikan|withdraw/i,
-                 resep:/kombinasi|combination|bundle|paket|resep|rincian/i }[IMP.key];
+                 resep:/kombinasi|combination|bundle|paket|resep|rincian/i,
+                 katalog:/database katalog|katalog|catalog/i }[IMP.key];
   const cocok = SUKA ? book.SheetNames.filter((n,i) => SUKA.test(n) && sizes[i] > 0) : [];
   return cocok.length
     ? cocok.reduce((a,b) => sizes[book.SheetNames.indexOf(a)] >= sizes[book.SheetNames.indexOf(b)] ? a : b)
@@ -7380,7 +8236,7 @@ function renderStep2(){
                 saldo:["tgl","jumlah"], beli:["tgl","sku","qty","harga"], ops:["tgl","jumlah"],
                 jurnal:["tgl","debit","kredit","jumlah"], produk:["sku"], hpp:["modal"],
                 mutasi:["tgl","jumlah"],
-                resep:["induk","sku","qty"],
+                resep:["induk","sku","qty"], katalog:["sku"],
                 adjust:["tgl","jumlah"] }[key] || ["tgl"];
   const missing = REQ.filter(k => !(IMP.map[k] || []).length);
 
@@ -7514,7 +8370,10 @@ function renderStep2(){
     ${(() => {
       const recs = siapkanRecs(rows);
       const kunci = new Set(recs.map(r => kunciGanti(key, r)).filter(Boolean));
-      const bentrok = (key === "produk" || key === "hpp")
+      const bentrok = key === "katalog"
+        ? (() => { const ada = new Set(recs.map(r => normKode(r.sku)));
+            return (S.katalog || []).filter(x => ada.has(normKode(x.sku))).length; })()
+        : (key === "produk" || key === "hpp")
         ? S.produk.filter(p => recs.some(r => String(r.sku) === String(p.sku))).length
         : key === "resep"
         ? (() => { const ind = new Set(recs.map(r => normKode(r.induk)));
@@ -7534,9 +8393,16 @@ function renderStep2(){
         ? [["periode", `Perbarui Harga Modal ${bentrok} SKU yang cocok, SKU baru ditambahkan`]]
         : key === "produk"
         ? [["periode", `Perbarui ${bentrok} SKU yang sudah ada, tambahkan sisanya`], ["tambah", "Tambahkan semua tanpa memeriksa"], ["semua", "Ganti seluruh isi tabel"]]
+        : key === "katalog"
+        ? [["periode", bentrok ? `Perbarui ${bentrok} SKU yang sudah ada, tambahkan sisanya` : "Tambahkan ke katalog"],
+           ["semua", "Ganti seluruh isi katalog dengan berkas ini"]]
         : [["periode", `Ganti data ${sebut}, di luar itu dibiarkan`], ["tambah", "Tambahkan ke data yang sudah ada"], ["semua", "Ganti seluruh isi tabel"]];
-      const def = IMP.mode || (key === "resep" ? "periode" : bentrok ? "periode" : "tambah");
+      const def = IMP.mode || ((key === "resep" || key === "katalog") ? "periode" : bentrok ? "periode" : "tambah");
       IMP.mode = def;
+      if (key === "katalog") return `${bentrok ? `<div class="hint" style="margin-top:14px"><strong>${bentrok} SKU sudah ada di katalog.</strong>
+          Harga, stok, foto, dan kategorinya diperbarui dari berkas ini; kolom yang kosong di berkas tidak menghapus isian lama.</div>` : ""}
+      <div class="field" style="margin-top:14px"><label>Cara menyimpan</label>
+        <select id="imp-mode">${opsi.map(([v,t]) => `<option value="${v}"${v===def?" selected":""}>${esc(t)}</option>`).join("")}</select></div>`;
       return `${bentrok ? (key === "resep"
         ? `<div class="hint" style="margin-top:14px"><strong>${bentrok} baris komponen akan diperbarui.</strong>
            Resep untuk SKU kombinasi yang ada di file ini ditulis ulang seluruhnya, jadi tidak ada komponen kembar.</div>`
@@ -7660,7 +8526,15 @@ async function doImport(rows){
     for (const f of fields){
       const cols = IMP.map[f.k] || [];
       if (!cols.length) continue;
-      if (f.t === "n"){ const v = fieldVal(row, f.k); if (v){ rec[f.k] = v; ok = true; } continue; }
+      if (f.t === "n"){
+        /* Di katalog, sel kosong dan angka nol berbeda arti: kosong berarti "ambil
+           dari aplikasi", nol berarti "stoknya memang habis". Jadi keduanya dijaga. */
+        if (key === "katalog"){
+          const raw = String(row[cols[0]] ?? "").trim();
+          if (raw !== "" && raw !== "-"){ rec[f.k] = fieldVal(row, f.k); ok = true; }
+          continue;
+        }
+        const v = fieldVal(row, f.k); if (v){ rec[f.k] = v; ok = true; } continue; }
       const raw = row[cols[0]];
       if (raw == null || String(raw).trim() === "" || String(raw).trim() === "-") continue;
       if (f.t === "date"){ const d = parseDate(raw); if (d){ rec[f.k] = d; ok = true; } }
@@ -7670,7 +8544,7 @@ async function doImport(rows){
     /* baris "Total …" di kaki sheet Shopee bukan transaksi */
     if (/^total\b/i.test(String(rec.ket || rec.supplier || "").trim())){ catat(row, "total", rec); continue; }
     if (punyaTanggal(key) && !rec.tgl){ catat(row, "tanggal", rec); continue; }
-    if (key === "produk" || key === "hpp") ok = !!rec.sku;
+    if (key === "produk" || key === "hpp" || key === "katalog") ok = !!String(rec.sku || "").trim();
     if (key === "resep") ok = !!(String(rec.induk || "").trim() && String(rec.sku || "").trim() && num(rec.qty) > 0);
     if (ok) out.push(rec); else catat(row, "kosong", rec);
   }
@@ -7734,6 +8608,15 @@ async function doImport(rows){
     return;
   }
   let dasar = S[key];
+  let ktDiperbarui = 0, ktSetel = null;
+  if (key === "katalog"){
+    for (const r of out){ delete r.plat; delete r.toko; }
+    /* berkas katalog Excel lama: sheet PENGATURAN-nya dipakai sekali, saat
+       pengaturan katalog di aplikasi masih kosong */
+    if (!Object.keys(S.katalogSet || {}).length){
+      try { const lama = bacaPengaturanLama(); if (Object.keys(lama).length){ S.katalogSet = lama; ktSetel = lama; } } catch(e){}
+    }
+  }
   if (mode === "semua"){
     if (S[key].length && !await konfirmasi(`Ganti SELURUH isi ${TABLES[key].label}?\n\n${S[key].length} baris lama dihapus, diganti ${out.length} baris dari file ini.`, "Ganti seluruh tabel", "Ganti semua")) return;
     dasar = [];
@@ -7742,6 +8625,17 @@ async function doImport(rows){
     if (key === "resep"){
       const ind = new Set(out.map(r => normKode(r.induk)));
       dasar = dasar.filter(x => !ind.has(normKode(x.induk)));
+    }
+    else if (key === "katalog"){
+      const idx = new Map(dasar.map(x => [normKode(x.sku), x]));
+      const sisaOut = [];
+      for (const r of out){
+        const p = idx.get(normKode(r.sku));
+        if (!p){ sisaOut.push(r); idx.set(normKode(r.sku), r); continue; }
+        for (const [k,v] of Object.entries(r)) if (v !== "" && v != null) p[k] = v;
+        ktDiperbarui++;
+      }
+      out = sisaOut;
     }
     else if (key === "produk"){
       const sisaOut = [];
@@ -7817,8 +8711,13 @@ async function doImport(rows){
 
   setTimeout(async () => {
     const teks =
-      (ringkas ? detail + " baris diringkas menjadi " + out.length + " baris." : out.length + " baris berhasil diimpor.") +
+      (key === "katalog" ? out.length + " SKU baru masuk katalog."
+        : ringkas ? detail + " baris diringkas menjadi " + out.length + " baris." : out.length + " baris berhasil diimpor.") +
       (diganti ? "\n" + diganti + " baris lama pada periode yang sama diganti." : "") +
+      (key === "katalog" && ktDiperbarui ? "\n" + ktDiperbarui + " SKU yang sudah ada diperbarui dari berkas ini." : "") +
+      (ktSetel ? "\n\nSheet PENGATURAN di berkas ini ikut terbaca" +
+        (ktSetel.brand ? " (brand " + ktSetel.brand + (ktSetel.edisi ? ", " + ktSetel.edisi : "") + ")" : "") +
+        " — nama brand, kontak, kategori, dan tata letaknya sudah dipindahkan ke Pengaturan Katalog." : "") +
       (lintasBulan ? "\n" + lintasBulan + " pesanan di file ini dibuat pada bulan sebelumnya — dicatat untuk halaman Tutup Buku." : "") +
       (perUnit ? "\nSetiap baris dihitung 1 unit." : "") +
       (added ? "\n" + added + " SKU baru ditambahkan ke Master Produk — isi Harga Modal-nya agar HPP terhitung." : "") +
